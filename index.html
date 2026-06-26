@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Conferinho: comparador de vários relatórios fiscais em PDF da SEFAZ, sistema contábil e arquivos enviados pelo cliente." />
+  <title>Conferinho — Comparador de Relatórios Fiscais</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand-wrap" href="#top" aria-label="Conferinho — início">
+      <span class="brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 64 64"><path d="M13 5h38a8 8 0 0 1 8 8v29a8 8 0 0 1-8 8H30L18 59v-9h-5a8 8 0 0 1-8-8V13a8 8 0 0 1 8-8Z" fill="currentColor"/><path d="m18 28 9 9 20-21" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"/></svg>
+      </span>
+      <span>
+        <span class="brand">Conferinho</span>
+        <span class="brand-subtitle">Compara. Confere. Dá certo.</span>
+      </span>
+    </a>
+    <div class="top-actions">
+      <button class="button button-ghost" id="loadDemoBtn" type="button">
+        <span class="button-dot"></span> Testar com exemplo
+      </button>
+      <button class="button button-ghost" id="resetBtn" type="button">Limpar comparação</button>
+    </div>
+  </header>
+
+  <main class="page-shell" id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="eyebrow-dot"></span> SEU ASSISTENTE DE CONFERÊNCIA</span>
+        <h1>Deixe que o <span>Conferinho</span> encontre as diferenças para você.</h1>
+        <p>Adicione vários PDFs da SEFAZ e vários relatórios do sistema ou do cliente. O Conferinho reúne tudo, cruza as notas e mostra onde você realmente precisa olhar.</p>
+        <div class="hero-benefits" aria-label="Benefícios do Conferinho">
+          <span><b>✓</b> Vários arquivos de cada lado</span>
+          <span><b>✓</b> Diferenças organizadas</span>
+          <span><b>✓</b> Resultado pronto para exportar</span>
+        </div>
+        <div class="hero-actions">
+          <a class="button button-primary button-hero" href="#uploadSection">Começar conferência</a>
+          <span class="privacy-note"><span>●</span> Seus arquivos ficam no navegador nesta demo</span>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-label="Mascote Conferinho">
+        <div class="warm-orb orb-one"></div>
+        <div class="warm-orb orb-two"></div>
+        <div class="mascot-frame">
+          <img src="assets/mascote-conferinho.jpg" alt="Conferinho segurando dois relatórios fiscais e conferindo as diferenças com uma lupa" />
+        </div>
+        <div class="mascot-message">
+          <span class="message-check">✓</span>
+          <div><strong>Olá, eu sou o Conferinho!</strong><small>Pode mandar os relatórios que eu organizo a conferência.</small></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="flow-intro">
+      <span class="flow-kicker">É simples</span>
+      <h2>Dois grupos de arquivos. Uma conferência bem mais tranquila.</h2>
+      <p>Você pode adicionar quantos PDFs precisar em cada grupo.</p>
+    </section>
+
+    <section class="upload-grid" id="uploadSection">
+      <article class="panel upload-panel sefaz-panel">
+        <div class="panel-heading">
+          <div class="step-number">1</div>
+          <div class="panel-title-wrap">
+            <span class="panel-kicker">GRUPO OFICIAL</span>
+            <h2>Relatórios da SEFAZ</h2>
+            <p>Consultas oficiais, páginas separadas ou relatórios de períodos complementares.</p>
+          </div>
+          <span class="multi-badge">Vários PDFs</span>
+        </div>
+        <label class="dropzone" id="sefazDropzone" for="sefazInput">
+          <input id="sefazInput" type="file" accept="application/pdf,.pdf" multiple />
+          <div class="drop-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <strong>Solte aqui os PDFs da SEFAZ</strong>
+          <span>ou clique para selecionar vários arquivos</span>
+          <em>PDF com texto selecionável</em>
+        </label>
+        <div class="file-list" id="sefazFileList"></div>
+      </article>
+
+      <div class="compare-bridge" aria-hidden="true">
+        <span></span><b>×</b><span></span>
+      </div>
+
+      <article class="panel upload-panel system-panel">
+        <div class="panel-heading">
+          <div class="step-number">2</div>
+          <div class="panel-title-wrap">
+            <span class="panel-kicker">GRUPO INTERNO</span>
+            <h2>Relatórios do sistema ou cliente</h2>
+            <p>Acompanhamento de entradas, relatórios internos ou documentos enviados pelo cliente.</p>
+          </div>
+          <span class="multi-badge warm">Vários PDFs</span>
+        </div>
+        <label class="dropzone" id="systemDropzone" for="systemInput">
+          <input id="systemInput" type="file" accept="application/pdf,.pdf" multiple />
+          <div class="drop-icon warm" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <strong>Solte aqui os outros relatórios</strong>
+          <span>ou clique para selecionar vários arquivos</span>
+          <em>Sistema, cliente ou outra fonte</em>
+        </label>
+        <div class="file-list" id="systemFileList"></div>
+      </article>
+    </section>
+
+    <section class="panel settings-panel">
+      <div class="settings-head">
+        <div class="panel-heading compact">
+          <div class="step-number">3</div>
+          <div>
+            <span class="panel-kicker">AJUSTES OPCIONAIS</span>
+            <h2>Como você quer que eu confira?</h2>
+            <p>As configurações abaixo ajudam quando os relatórios têm pequenas diferenças de formato.</p>
+          </div>
+        </div>
+        <div class="helper-chip"><span>💡</span> Na maioria das vezes, pode deixar como está.</div>
+      </div>
+      <div class="settings-grid">
+        <label class="field">
+          <span>Tolerância de valor</span>
+          <div class="input-prefix"><span>R$</span><input id="toleranceInput" value="0,01" inputmode="decimal" /></div>
+        </label>
+        <label class="toggle-field">
+          <input id="ignoreDateToggle" type="checkbox" />
+          <span class="toggle"></span>
+          <span><strong>Permitir data diferente</strong><small>Usa número da nota, valor e fornecedor como apoio.</small></span>
+        </label>
+        <label class="toggle-field">
+          <input id="ignoreAccentsToggle" type="checkbox" checked />
+          <span class="toggle"></span>
+          <span><strong>Ignorar acentos e abreviações</strong><small>Ajuda quando o nome do fornecedor vem cortado.</small></span>
+        </label>
+      </div>
+      <div class="action-row">
+        <div class="status-hint" id="statusHint"><span class="status-dot"></span>Estou esperando pelo menos um arquivo em cada grupo.</div>
+        <button class="button button-primary button-large" id="compareBtn" type="button" disabled>
+          <span class="mini-check">✓</span>
+          <span id="compareBtnText">Conferir agora</span>
+          <svg viewBox="0 0 24 24" fill="none"><path d="m9 18 6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <section id="progressSection" class="panel progress-panel hidden" aria-live="polite">
+      <div class="progress-mascot"><img src="assets/mascote-conferinho.jpg" alt="" /></div>
+      <div class="progress-content">
+        <div class="progress-head"><strong id="progressTitle">Lendo os relatórios...</strong><span id="progressPercent">0%</span></div>
+        <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+        <p id="progressDetail">Preparando arquivos</p>
+      </div>
+    </section>
+
+    <section id="resultsSection" class="results-section hidden">
+      <div class="results-header">
+        <div class="result-title-wrap">
+          <div class="result-mascot"><img src="assets/mascote-conferinho.jpg" alt="" /></div>
+          <div>
+            <span class="eyebrow"><span class="eyebrow-dot"></span> CONFERÊNCIA CONCLUÍDA</span>
+            <h2>Prontinho! Veja o que eu encontrei.</h2>
+            <p id="resultSubtitle">Os arquivos foram reunidos e comparados.</p>
+          </div>
+        </div>
+        <div class="results-actions">
+          <button class="button button-ghost" id="exportBtn" type="button">Exportar CSV</button>
+          <button class="button button-secondary" id="printBtn" type="button">Imprimir relatório</button>
+        </div>
+      </div>
+
+      <div class="summary-grid">
+        <button class="summary-card active" data-filter="all" type="button">
+          <span class="summary-icon">⌁</span>
+          <span class="summary-label">Documentos analisados</span>
+          <strong id="totalCount">0</strong>
+          <span class="summary-foot">nos dois grupos</span>
+        </button>
+        <button class="summary-card success" data-filter="ok" type="button">
+          <span class="summary-icon">✓</span>
+          <span class="summary-label">Conferidos</span>
+          <strong id="okCount">0</strong>
+          <span class="summary-foot">sem diferenças</span>
+        </button>
+        <button class="summary-card warning" data-filter="divergent" type="button">
+          <span class="summary-icon">!</span>
+          <span class="summary-label">Com divergência</span>
+          <strong id="divergentCount">0</strong>
+          <span class="summary-foot">valor, data ou fornecedor</span>
+        </button>
+        <button class="summary-card danger" data-filter="missing" type="button">
+          <span class="summary-icon">−</span>
+          <span class="summary-label">Não localizados</span>
+          <strong id="missingCount">0</strong>
+          <span class="summary-foot">em um dos relatórios</span>
+        </button>
+        <button class="summary-card purple" data-filter="duplicate" type="button">
+          <span class="summary-icon">⧉</span>
+          <span class="summary-label">Possíveis duplicados</span>
+          <strong id="duplicateCount">0</strong>
+          <span class="summary-foot">repetidos no mesmo grupo</span>
+        </button>
+      </div>
+
+      <div class="panel validation-panel" id="validationPanel"></div>
+
+      <div class="panel table-panel">
+        <div class="table-toolbar">
+          <div class="filter-tabs" role="tablist" aria-label="Filtros de resultado">
+            <button class="filter-tab active" data-filter="all" type="button">Todos</button>
+            <button class="filter-tab" data-filter="missing-system" type="button">Falta no sistema</button>
+            <button class="filter-tab" data-filter="missing-sefaz" type="button">Falta na SEFAZ</button>
+            <button class="filter-tab" data-filter="divergent" type="button">Divergentes</button>
+            <button class="filter-tab" data-filter="ok" type="button">Conferidos</button>
+          </div>
+          <label class="search-box">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="m20 20-4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <input id="searchInput" placeholder="Buscar nota ou fornecedor" />
+          </label>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Situação</th>
+                <th>Nota</th>
+                <th>Fornecedor</th>
+                <th>Data SEFAZ</th>
+                <th>Data sistema</th>
+                <th class="align-right">Valor SEFAZ</th>
+                <th class="align-right">Valor sistema</th>
+                <th>Origem</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+          <div id="emptyResults" class="empty-results hidden">
+            <div class="empty-icon">⌕</div>
+            <strong>Nenhum item encontrado</strong>
+            <span>Altere o filtro ou o termo de busca.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="brand-icon small" aria-hidden="true">
+          <svg viewBox="0 0 64 64"><path d="M13 5h38a8 8 0 0 1 8 8v29a8 8 0 0 1-8 8H30L18 59v-9h-5a8 8 0 0 1-8-8V13a8 8 0 0 1 8-8Z" fill="currentColor"/><path d="m18 28 9 9 20-21" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"/></svg>
+        </span>
+        <div><strong>Conferinho</strong><span>Compara. Confere. Dá certo.</span></div>
+      </div>
+      <p>Demo visual do comparador de relatórios fiscais. Os PDFs são processados localmente no navegador.</p>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
