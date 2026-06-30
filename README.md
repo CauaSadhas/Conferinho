@@ -1,28 +1,41 @@
-# Conferinho — demo corrigida
+# Conferinho — Comparador Inteligente de Relatórios
 
-Comparador de relatórios fiscais em PDF com suporte a vários arquivos em cada grupo.
+Esta versão simplifica a entrada para apenas dois lados:
 
-## Correções desta versão
+- **Relatório 1**
+- **Relatório 2**
 
-- O leitor do relatório interno deixou de depender de posições fixas das colunas.
-- As colunas `Data`, `Nota`, `Fornecedor`, `UF` e `Valor Contábil` são identificadas pelo cabeçalho do próprio PDF.
-- Há uma leitura genérica de apoio para relatórios com pequenas mudanças de layout.
-- O layout da consulta de NF-e da SEFAZ/MS também ficou mais tolerante.
-- Cada arquivo agora exibe um diagnóstico com páginas, método de leitura e quantidade de registros reconhecidos.
-- Se um dos grupos resultar em zero registros, a comparação é interrompida. Assim, o sistema não marca todas as notas como ausentes por engano.
-- PDFs sem texto selecionável são identificados como possíveis arquivos digitalizados que precisarão de OCR.
+Cada campo aceita um ou vários PDFs. Não é necessário escolher se o arquivo veio da SEFAZ, de um sistema contábil, do cliente ou de outra fonte.
 
-## Como abrir
+## Como a leitura funciona
 
-Abra `index.html` em um navegador com internet ou publique a pasta no Vercel. A internet é necessária nesta demo para carregar o PDF.js usado na leitura dos arquivos.
+O Conferinho tenta automaticamente:
 
-## Teste realizado
+1. extrair o texto e a posição das informações no PDF;
+2. reconhecer linhas de tabela, datas, valores, documentos, CNPJ/CPF e descrições;
+3. comparar registros mesmo quando as colunas aparecem em outra ordem;
+4. usar semelhança de texto quando os nomes estão abreviados;
+5. comparar linhas de texto quando não existe uma tabela tradicional;
+6. usar OCR como alternativa para PDFs escaneados ou formados por imagens.
 
-A versão foi validada com os dois modelos usados na criação do projeto:
+## Proteção contra resultado falso
 
-- consulta de NF-e da SEFAZ/MS: 65 registros reconhecidos;
-- acompanhamento de entradas do sistema: 3 registros reconhecidos.
+Se um dos lados não produzir nenhum conteúdo comparável, o sistema interrompe a comparação. Ele não marca todo o outro relatório como ausente.
 
-## Limitação atual
+## Observação importante
 
-Relatórios digitalizados como imagem ainda não passam por OCR. Para ajustar um novo layout específico, envie o PDF que não foi reconhecido para que as colunas sejam calibradas com o arquivo real.
+A leitura é automática e cobre muitos layouts, mas nenhum comparador executado somente no navegador consegue garantir precisão total em literalmente todos os PDFs existentes. Arquivos protegidos, imagens de baixa qualidade, tabelas extremamente fragmentadas ou documentos manuscritos podem exigir ajuste ou processamento em servidor com inteligência artificial.
+
+## Arquivos
+
+- `index.html`: estrutura da interface;
+- `styles.css`: identidade visual do Conferinho;
+- `app.js`: upload, PDF.js, OCR, interpretação automática, comparação, filtros e CSV;
+- `assets/`: marca e mascote;
+- `vercel.json`: configuração de publicação.
+
+## Abrir e publicar
+
+Abra `index.html` para visualizar. Para publicar no Vercel, envie a pasta completa mantendo todos os arquivos e a pasta `assets` juntos.
+
+O PDF.js e o Tesseract.js são carregados por CDN, portanto a leitura precisa de internet nesta versão da demo.
