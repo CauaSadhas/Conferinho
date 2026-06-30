@@ -6,7 +6,7 @@ const state = {
   results: [],
   activeFilter: 'all',
   demoMode: false,
-  meta: { sefazPages: 0, systemPages: 0, parsedSefaz: 0, parsedSystem: 0 }
+  meta: { sefazPages: 0, systemPages: 0, parsedSefaz: 0, parsedSystem: 0, diagnostics: [] }
 };
 
 const els = {
@@ -40,6 +40,10 @@ const els = {
   duplicateCount: document.querySelector('#duplicateCount'),
   validationPanel: document.querySelector('#validationPanel'),
   resultSubtitle: document.querySelector('#resultSubtitle'),
+  resultEyebrow: document.querySelector('#resultEyebrow'),
+  resultTitle: document.querySelector('#resultTitle'),
+  emptyResultsTitle: document.querySelector('#emptyResultsTitle'),
+  emptyResultsText: document.querySelector('#emptyResultsText'),
   exportBtn: document.querySelector('#exportBtn'),
   printBtn: document.querySelector('#printBtn'),
   toast: document.querySelector('#toast')
@@ -156,14 +160,23 @@ async function runComparison() {
   try {
     let sefazRecords;
     let systemRecords;
-    state.meta = { sefazPages: 0, systemPages: 0, parsedSefaz: 0, parsedSystem: 0 };
+    state.meta = { sefazPages: 0, systemPages: 0, parsedSefaz: 0, parsedSystem: 0, diagnostics: [] };
 
     if (state.demoMode) {
       await wait(450);
       setProgress(45, 'Lendo a demonstração...', 'Reconhecendo notas e fornecedores');
       await wait(450);
       ({ sefazRecords, systemRecords } = getDemoRecords());
-      state.meta = { sefazPages: 2, systemPages: 2, parsedSefaz: sefazRecords.length, parsedSystem: systemRecords.length };
+      state.meta = {
+        sefazPages: 2,
+        systemPages: 2,
+        parsedSefaz: sefazRecords.length,
+        parsedSystem: systemRecords.length,
+        diagnostics: [
+          { group: 'sefaz', name: 'SEFAZ_exemplo.pdf', pages: 2, records: sefazRecords.length, parser: 'Exemplo interno', textChars: 1000 },
+          { group: 'system', name: 'Sistema_exemplo.pdf', pages: 2, records: systemRecords.length, parser: 'Exemplo interno', textChars: 1000 }
+        ]
+      };
     } else {
       if (!window.pdfjsLib) throw new Error('O leitor de PDF não foi carregado. Verifique sua internet e tente novamente.');
       const totalFiles = state.sefazFiles.length + state.systemFiles.length;
@@ -175,8 +188,12 @@ async function runComparison() {
         setProgress(5 + (processed / totalFiles) * 67, 'Lendo relatórios da SEFAZ...', file.name);
         const extracted = await extractPdf(file);
         state.meta.sefazPages += extracted.pages;
-        const parsed = parseSefaz(extracted.lines, file.name);
-        sefazRecords.push(...parsed);
+        const parsedInfo = parseBestReport(extracted, file.name, 'sefaz');
+        sefazRecords.push(...parsedInfo.records);
+        state.meta.diagnostics.push({
+          group: 'sefaz', name: file.name, pages: extracted.pages, records: parsedInfo.records.length,
+          parser: parsedInfo.parser, textChars: extracted.textChars, kind: parsedInfo.kind
+        });
         processed++;
       }
 
@@ -184,13 +201,31 @@ async function runComparison() {
         setProgress(5 + (processed / totalFiles) * 67, 'Lendo relatórios do sistema...', file.name);
         const extracted = await extractPdf(file);
         state.meta.systemPages += extracted.pages;
-        const parsed = parseSystem(extracted.rowsByPage, file.name);
-        systemRecords.push(...parsed);
+        const parsedInfo = parseBestReport(extracted, file.name, 'system');
+        systemRecords.push(...parsedInfo.records);
+        state.meta.diagnostics.push({
+          group: 'system', name: file.name, pages: extracted.pages, records: parsedInfo.records.length,
+          parser: parsedInfo.parser, textChars: extracted.textChars, kind: parsedInfo.kind
+        });
         processed++;
       }
 
       state.meta.parsedSefaz = sefazRecords.length;
       state.meta.parsedSystem = systemRecords.length;
+    }
+
+    const readingFailed = !sefazRecords.length || !systemRecords.length;
+    if (readingFailed) {
+      state.results = [];
+      setProgress(100, 'Leitura incompleta', 'Evitei gerar um resultado errado porque um dos grupos não foi reconhecido');
+      await wait(350);
+      els.progressSection.classList.add('hidden');
+      renderSummary();
+      setFilter('all');
+      els.resultsSection.classList.remove('hidden');
+      els.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      toast('A comparação foi interrompida para não marcar notas incorretamente como ausentes.');
+      return;
     }
 
     setProgress(78, 'Cruzando os documentos...', 'Comparando nota, data, valor e fornecedor');
@@ -203,12 +238,7 @@ async function runComparison() {
     setFilter('all');
     els.resultsSection.classList.remove('hidden');
     els.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    if (!sefazRecords.length || !systemRecords.length) {
-      toast('Alguns PDFs foram lidos, mas o layout ainda não foi reconhecido. A demo pode receber novos modelos de parser.');
-    } else {
-      toast('Comparação concluída com sucesso.');
-    }
+    toast('Comparação concluída com sucesso.');
   } catch (error) {
     console.error(error);
     els.progressSection.classList.add('hidden');
@@ -224,24 +254,44 @@ async function extractPdf(file) {
   const pdf = await pdfjsLib.getDocument({ data }).promise;
   const allLines = [];
   const rowsByPage = [];
+  let textChars = 0;
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
     const page = await pdf.getPage(pageNumber);
     const textContent = await page.getTextContent();
-    const grouped = new Map();
+    const items = textContent.items
+      .filter(item => String(item.str || '').trim())
+      .map(item => ({
+        x: Number(item.transform[4] || 0),
+        y: Number(item.transform[5] || 0),
+        width: Number(item.width || 0),
+        height: Math.abs(Number(item.height || item.transform[3] || 0)),
+        str: String(item.str || '').trim()
+      }))
+      .sort((a, b) => b.y - a.y || a.x - b.x);
 
-    textContent.items.forEach(item => {
-      const y = Math.round(item.transform[5] * 2) / 2;
-      if (!grouped.has(y)) grouped.set(y, []);
-      grouped.get(y).push({ x: item.transform[4], str: item.str });
-    });
+    textChars += items.reduce((sum, item) => sum + item.str.length, 0);
 
-    const pageRows = [...grouped.entries()]
-      .sort((a, b) => b[0] - a[0])
-      .map(([y, items]) => {
-        const sortedItems = items.sort((a, b) => a.x - b.x);
+    // Alguns sistemas imprimem colunas da mesma linha com diferenças mínimas de altura.
+    // Em vez de exigir o mesmo Y exato, agrupamos itens próximos na mesma faixa visual.
+    const clusters = [];
+    for (const item of items) {
+      const tolerance = Math.max(1.8, Math.min(3.2, (item.height || 6) * 0.42));
+      let cluster = clusters.find(candidate => Math.abs(candidate.y - item.y) <= tolerance);
+      if (!cluster) {
+        cluster = { y: item.y, items: [] };
+        clusters.push(cluster);
+      }
+      cluster.items.push(item);
+      cluster.y = cluster.items.reduce((sum, current) => sum + current.y, 0) / cluster.items.length;
+    }
+
+    const pageRows = clusters
+      .sort((a, b) => b.y - a.y)
+      .map(cluster => {
+        const sortedItems = cluster.items.sort((a, b) => a.x - b.x);
         return {
-          y,
+          y: cluster.y,
           items: sortedItems,
           text: sortedItems.map(item => item.str).join(' ').replace(/\s+/g, ' ').trim()
         };
@@ -252,91 +302,267 @@ async function extractPdf(file) {
     rowsByPage.push(pageRows);
   }
 
-  return { pages: pdf.numPages, lines: allLines, rowsByPage };
+  return { pages: pdf.numPages, lines: allLines, rowsByPage, textChars };
 }
 
-function parseSefaz(lines, fileName) {
+function parseBestReport(extracted, fileName, group) {
+  const kind = detectReportKind(extracted.lines);
+  const sefaz = dedupeRecords(parseSefaz(extracted.lines, fileName, group));
+  const system = dedupeRecords(parseSystem(extracted.rowsByPage, fileName, group));
+  const generic = dedupeRecords(parseGenericFiscalRows(extracted.rowsByPage, fileName, group));
+
+  if (kind === 'sefaz-ms' && sefaz.length) return { records: sefaz, parser: 'Layout SEFAZ/MS', kind };
+  if (kind === 'acompanhamento-entradas' && system.length) return { records: system, parser: 'Acompanhamento de entradas', kind };
+
+  const candidates = [
+    { records: group === 'sefaz' ? sefaz : system, parser: group === 'sefaz' ? 'Layout SEFAZ/MS' : 'Relatório do sistema' },
+    { records: group === 'sefaz' ? system : sefaz, parser: group === 'sefaz' ? 'Tabela fiscal do sistema' : 'Tabela fiscal oficial' },
+    { records: generic, parser: 'Leitura genérica por colunas' }
+  ].sort((a, b) => b.records.length - a.records.length);
+
+  const best = candidates[0];
+  return { records: best.records, parser: best.records.length ? best.parser : 'Layout não reconhecido', kind };
+}
+
+function detectReportKind(lines) {
+  const text = normalizeForParser(lines.slice(0, 80).join(' '));
+  if (/GOVERNO DO ESTADO DE MATO GROSSO DO SUL|NOTAS FISCAIS ELETRONICAS/.test(text)) return 'sefaz-ms';
+  if (/ACOMPANHAMENTO DE ENTRADAS|RELATORIO DE ENTRADAS|LIVRO DE ENTRADAS/.test(text)) return 'acompanhamento-entradas';
+  return 'desconhecido';
+}
+
+function parseSefaz(lines, fileName, side = 'sefaz') {
   const records = [];
-  const rowRegex = /^\s*(\d{8,12})\s+(.+?)(\d{14})\s+(\d{1,12})\s+(\d{2}\/\d{2}\/\d{4})(?:\s+\S+)*?\s+([A-Z]{2})\s+([\d.]+,\d{2})\s*$/;
 
   for (const line of lines) {
-    const normalized = line.replace(/\s+/g, ' ').trim();
-    const match = normalized.match(rowRegex);
-    if (!match) continue;
+    const normalized = String(line || '').replace(/\s+/g, ' ').trim();
+    const tail = normalized.match(/(\d{2}\/\d{2}\/\d{4})(?:\s+\S+)*?\s+([A-Z]{2})\s+((?:\d{1,3}(?:\.\d{3})*|\d+),\d{2})\s*$/i);
+    if (!tail || tail.index === undefined) continue;
+
+    const beforeDate = normalized.slice(0, tail.index).trim();
+    const idAndInvoice = beforeDate.match(/([\d.\/-]{11,20})\s+(\d{1,12})\s*$/);
+    if (!idAndInvoice || idAndInvoice.index === undefined) continue;
+
+    const taxId = idAndInvoice[1].replace(/\D/g, '');
+    if (taxId.length < 11 || taxId.length > 14) continue;
+
+    const prefix = beforeDate.slice(0, idAndInvoice.index).trim();
+    const firstNumber = prefix.match(/^\s*(\d{6,14})\s+(.*)$/);
+    if (!firstNumber) continue;
+
+    const supplier = cleanSupplier(firstNumber[2]);
+    if (!supplier || /RAZAO SOCIAL|INFORMACOES|VISUALIZANDO/i.test(normalizeForParser(supplier))) continue;
+
     records.push({
-      side: 'sefaz',
-      ie: match[1],
-      supplier: cleanSupplier(match[2]),
-      cnpj: match[3],
-      invoice: normalizeInvoice(match[4]),
-      date: match[5],
-      uf: match[6],
-      amount: parseMoney(match[7]),
+      side,
+      ie: firstNumber[1],
+      supplier,
+      cnpj: taxId,
+      invoice: normalizeInvoice(idAndInvoice[2]),
+      date: tail[1],
+      uf: tail[2].toUpperCase(),
+      amount: parseMoney(tail[3]),
       fileName
     });
   }
   return records;
 }
 
-function parseSystem(rowsByPage, fileName) {
+function parseSystem(rowsByPage, fileName, side = 'system') {
+  const records = [];
+
+  for (const pageRows of rowsByPage) {
+    const columns = detectSystemColumns(pageRows);
+    for (const row of pageRows) {
+      const record = parseSystemRow(row, columns, fileName, side);
+      if (record) records.push(record);
+    }
+  }
+
+  return dedupeRecords(records);
+}
+
+function detectSystemColumns(pageRows) {
+  const header = pageRows.find(row => {
+    const text = normalizeForParser(row.text);
+    return text.includes('DATA') && text.includes('NOTA') && (text.includes('FORNECEDOR') || text.includes('RAZAO SOCIAL'));
+  });
+  if (!header) return null;
+
+  const normalizedItems = header.items.map(item => ({ ...item, normalized: normalizeForParser(item.str) }));
+  const findX = patterns => {
+    const item = normalizedItems.find(current => patterns.some(pattern => pattern.test(current.normalized)));
+    return item ? item.x : null;
+  };
+
+  const supplierX = findX([/^FORNECEDOR$/, /^RAZAO$/, /^EMITENTE$/]);
+  const cfopX = findX([/^CFOP$/]);
+  const ufX = findX([/^UF$/]);
+  const tipoX = findX([/^TIPO$/]);
+  const baseX = findX([/^BASE$/]);
+  const valueItems = normalizedItems.filter(item => /^VALOR$/.test(item.normalized));
+  let amountX = valueItems.find(item => supplierX === null || item.x > supplierX)?.x ?? null;
+  if (valueItems.length > 1 && tipoX !== null) {
+    const beforeTipo = valueItems.filter(item => item.x < tipoX).sort((a, b) => b.x - a.x)[0];
+    if (beforeTipo) amountX = beforeTipo.x;
+  }
+
+  return {
+    code: findX([/^CODIGO$/]),
+    date: findX([/^DATA$/]),
+    invoice: findX([/^NOTA$/, /^NF$/, /^NFE$/]),
+    supplier: supplierX,
+    supplierEnd: cfopX ?? ufX ?? amountX,
+    uf: ufX,
+    amount: amountX,
+    amountEnd: tipoX ?? baseX ?? null
+  };
+}
+
+function parseSystemRow(row, columns, fileName, side) {
+  const normalizedText = normalizeForParser(row.text);
+  if (!/\d{2}\/\d{2}\/\d{4}/.test(row.text)) return null;
+  if (/TOTAL|ACUMULADOR|PERIODO|EMISSAO/.test(normalizedText)) return null;
+
+  const dateMatch = row.text.match(/\b(\d{2}\/\d{2}\/\d{4})\b/);
+  if (!dateMatch) return null;
+
+  const items = row.items.slice().sort((a, b) => a.x - b.x);
+  const dateItem = items.find(item => item.str.includes(dateMatch[1]));
+  const numericItems = items.filter(item => /^\d{1,12}$/.test(item.str.replace(/\s/g, '')));
+  const moneyItems = items.filter(item => /^(?:R\$\s*)?(?:\d{1,3}(?:\.\d{3})*|\d+),\d{2}$/.test(item.str.trim()));
+
+  let invoiceItem = null;
+  if (columns?.invoice !== null && columns?.invoice !== undefined) {
+    invoiceItem = numericItems
+      .filter(item => !dateItem || item.x > dateItem.x)
+      .sort((a, b) => Math.abs(a.x - columns.invoice) - Math.abs(b.x - columns.invoice))[0] || null;
+  }
+  if (!invoiceItem && dateItem) {
+    invoiceItem = numericItems.filter(item => item.x > dateItem.x + 4).sort((a, b) => a.x - b.x)[0] || null;
+  }
+  if (!invoiceItem) {
+    const afterDate = row.text.slice((dateMatch.index || 0) + dateMatch[0].length);
+    const match = afterDate.match(/\b(\d{1,12})\b/);
+    if (match) invoiceItem = { x: dateItem?.x + 40 || 0, str: match[1] };
+  }
+  if (!invoiceItem) return null;
+
+  let amountItem = null;
+  if (columns?.amount !== null && columns?.amount !== undefined) {
+    amountItem = moneyItems
+      .filter(item => item.x > invoiceItem.x)
+      .sort((a, b) => Math.abs(a.x - columns.amount) - Math.abs(b.x - columns.amount))[0] || null;
+  }
+  if (!amountItem) {
+    const ufItem = items.find(item => /^[A-Z]{2}$/.test(item.str) && item.x > invoiceItem.x);
+    amountItem = moneyItems
+      .filter(item => item.x > (ufItem?.x ?? invoiceItem.x))
+      .sort((a, b) => a.x - b.x)[0] || null;
+  }
+  if (!amountItem) return null;
+
+  let supplierItems = [];
+  if (columns?.supplier !== null && columns?.supplier !== undefined) {
+    const end = columns.supplierEnd ?? amountItem.x;
+    supplierItems = items.filter(item => item.x >= columns.supplier - 3 && item.x < end - 2);
+  } else {
+    const cfopIndex = items.findIndex(item => /^\d[-.]?\d{3}$/.test(item.str) && item.x > invoiceItem.x);
+    const ufIndex = items.findIndex(item => /^[A-Z]{2}$/.test(item.str) && item.x > invoiceItem.x);
+    let endIndex = [cfopIndex, ufIndex].filter(index => index >= 0).sort((a, b) => a - b)[0];
+    if (endIndex === undefined) endIndex = items.findIndex(item => item === amountItem);
+    const invoiceIndex = items.findIndex(item => item === invoiceItem);
+    supplierItems = items.slice(invoiceIndex + 1, endIndex >= 0 ? endIndex : undefined);
+  }
+
+  const supplier = cleanSystemSupplier(supplierItems.map(item => item.str).join(' '));
+  const codeItem = dateItem
+    ? numericItems.filter(item => item.x < dateItem.x).sort((a, b) => b.x - a.x)[0]
+    : null;
+  const ufCandidates = items.filter(item => /^[A-Z]{2}$/.test(item.str) && item.x > invoiceItem.x && item.x < amountItem.x);
+  const ufItem = columns?.uf !== null && columns?.uf !== undefined
+    ? ufCandidates.sort((a, b) => Math.abs(a.x - columns.uf) - Math.abs(b.x - columns.uf))[0]
+    : ufCandidates.sort((a, b) => b.x - a.x)[0];
+
+  return {
+    side,
+    code: codeItem?.str || '',
+    date: dateMatch[1],
+    invoice: normalizeInvoice(invoiceItem.str),
+    supplier: supplier || 'FORNECEDOR NÃO IDENTIFICADO',
+    uf: ufItem?.str || '',
+    amount: parseMoney(amountItem.str),
+    fileName
+  };
+}
+
+function parseGenericFiscalRows(rowsByPage, fileName, side) {
   const records = [];
 
   for (const pageRows of rowsByPage) {
     for (const row of pageRows) {
-      // Neste layout, o código e a data são impressos juntos na primeira coluna.
-      // Itens muito próximos da margem esquerda podem ser números de agrupamento,
-      // por isso priorizamos a faixa visual da coluna "Código / Data".
-      const leftText = row.items
-        .filter(item => item.x >= 8 && item.x < 100)
-        .map(item => item.str)
-        .join('')
-        .replace(/\s+/g, '');
-      const identity = leftText.match(/(\d{1,8})(\d{2}\/\d{2}\/\d{4})/);
-      if (!identity) continue;
+      const text = normalizeForParser(row.text);
+      if (/TOTAL|ACUMULADOR|CABECALHO|PERIODO/.test(text)) continue;
+      const dateMatch = row.text.match(/\b(\d{2}\/\d{2}\/\d{4})\b/);
+      if (!dateMatch) continue;
 
-      const noteText = row.items
-        .filter(item => item.x >= 90 && item.x < 155)
-        .map(item => item.str)
-        .join(' ');
-      const noteMatch = noteText.match(/\d{1,12}/);
-      if (!noteMatch) continue;
+      const items = row.items.slice().sort((a, b) => a.x - b.x);
+      const dateIndex = items.findIndex(item => item.str.includes(dateMatch[1]));
+      if (dateIndex < 0) continue;
 
-      const amountText = row.items
-        .filter(item => item.x >= 325 && item.x < 390)
-        .map(item => item.str)
-        .join(' ');
-      const amountMatch = amountText.match(/[\d.]+,\d{2}/);
-      if (!amountMatch) continue;
+      const invoiceIndex = items.findIndex((item, index) => index > dateIndex && /^\d{1,12}$/.test(item.str));
+      if (invoiceIndex < 0) continue;
 
-      const supplierRaw = row.items
-        .filter(item => item.x >= 175 && item.x < 330)
-        .map(item => item.str)
-        .join(' ');
-      const supplier = cleanSystemSupplier(supplierRaw);
+      const ufIndex = items.findIndex((item, index) => index > invoiceIndex && /^[A-Z]{2}$/.test(item.str));
+      const moneyIndex = items.findIndex((item, index) => index > (ufIndex >= 0 ? ufIndex : invoiceIndex) && /^(?:\d{1,3}(?:\.\d{3})*|\d+),\d{2}$/.test(item.str));
+      if (moneyIndex < 0) continue;
 
+      let supplierEnd = ufIndex >= 0 ? ufIndex : moneyIndex;
+      const cfopIndex = items.findIndex((item, index) => index > invoiceIndex && index < supplierEnd && /^\d[-.]?\d{3}$/.test(item.str));
+      if (cfopIndex >= 0) supplierEnd = cfopIndex;
+
+      const supplier = cleanSystemSupplier(items.slice(invoiceIndex + 1, supplierEnd).map(item => item.str).join(' '));
       records.push({
-        side: 'system',
-        code: identity[1],
-        date: identity[2],
-        invoice: normalizeInvoice(noteMatch[0]),
+        side,
+        invoice: normalizeInvoice(items[invoiceIndex].str),
+        date: dateMatch[1],
         supplier: supplier || 'FORNECEDOR NÃO IDENTIFICADO',
-        uf: '',
-        amount: parseMoney(amountMatch[0]),
+        uf: ufIndex >= 0 ? items[ufIndex].str : '',
+        amount: parseMoney(items[moneyIndex].str),
         fileName
       });
     }
   }
+
   return records;
 }
 
 function cleanSystemSupplier(value) {
   let text = String(value || '').toUpperCase();
-  text = text.replace(/^\s*\d+/, '');
-  text = text.replace(/\b\d-\d{3}\b/g, ' ');
-  text = text.replace(/\b\d{1,2}\b/g, ' ');
-  text = text.replace(/\d+/g, ' ');
-  text = text.replace(/[^A-ZÀ-Ü& ]/g, ' ');
+  text = text.replace(/^\s*(?:\d{1,4}\s+){1,3}/, '');
+  text = text.replace(/\b\d[-.]?\d{3}\b/g, ' ');
+  text = text.replace(/[^A-ZÀ-Ü0-9&.\- ]/g, ' ');
+  text = text.replace(/\s+/g, ' ').trim();
   return cleanSupplier(text);
+}
+
+function normalizeForParser(value) {
+  return String(value || '')
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function dedupeRecords(records) {
+  const seen = new Set();
+  return records.filter(record => {
+    const key = [record.invoice, record.date, Number(record.amount || 0).toFixed(2), normalizeForParser(record.supplier)].join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function compareRecords(sefazRecords, systemRecords) {
@@ -464,21 +690,61 @@ function renderSummary() {
     return acc;
   }, {});
   const missing = (counts['missing-system'] || 0) + (counts['missing-sefaz'] || 0);
+  const readingFailed = state.meta.parsedSefaz === 0 || state.meta.parsedSystem === 0;
+
   els.totalCount.textContent = state.results.length;
   els.okCount.textContent = counts.ok || 0;
   els.divergentCount.textContent = counts.divergent || 0;
   els.missingCount.textContent = missing;
   els.duplicateCount.textContent = state.results.filter(item => item.duplicate).length;
-  els.resultSubtitle.textContent = `${state.meta.parsedSefaz} registro(s) extraído(s) da SEFAZ e ${state.meta.parsedSystem} do sistema.`;
+  els.exportBtn.disabled = !state.results.length;
+
+  if (readingFailed) {
+    els.resultEyebrow.innerHTML = '<span class="eyebrow-dot"></span> LEITURA INTERROMPIDA';
+    els.resultTitle.textContent = 'Ainda não comparei para não mostrar um resultado errado.';
+    els.resultSubtitle.textContent = `${state.meta.parsedSefaz} registro(s) reconhecido(s) na SEFAZ e ${state.meta.parsedSystem} no outro grupo.`;
+    els.emptyResultsTitle.textContent = 'A comparação não foi iniciada';
+    els.emptyResultsText.textContent = 'Um dos relatórios não teve as linhas reconhecidas. Veja o diagnóstico acima.';
+  } else {
+    els.resultEyebrow.innerHTML = '<span class="eyebrow-dot"></span> CONFERÊNCIA CONCLUÍDA';
+    els.resultTitle.textContent = 'Prontinho! Veja o que eu encontrei.';
+    els.resultSubtitle.textContent = `${state.meta.parsedSefaz} registro(s) extraído(s) da SEFAZ e ${state.meta.parsedSystem} do sistema.`;
+    els.emptyResultsTitle.textContent = 'Nenhum item encontrado';
+    els.emptyResultsText.textContent = 'Altere o filtro ou o termo de busca.';
+  }
+
+  const diagnosticRows = (state.meta.diagnostics || []).map(item => {
+    const noText = item.textChars < 30;
+    const status = item.records > 0 ? 'ok' : (noText ? 'scan' : 'error');
+    const label = item.records > 0
+      ? `${item.records} registro(s) reconhecido(s)`
+      : (noText ? 'PDF sem texto selecionável' : 'Nenhuma linha fiscal reconhecida');
+    return `
+      <div class="diagnostic-row diagnostic-${status}">
+        <div class="diagnostic-file">
+          <span class="diagnostic-badge">${item.group === 'sefaz' ? 'SEFAZ' : 'OUTRO'}</span>
+          <div><strong title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</strong><span>${item.pages} página(s) · ${escapeHtml(item.parser || 'Leitura automática')}</span></div>
+        </div>
+        <div class="diagnostic-result"><b>${label}</b>${noText ? '<span>Esse arquivo parece ser imagem e precisará de OCR.</span>' : ''}</div>
+      </div>`;
+  }).join('');
+
+  const warning = readingFailed ? `
+    <div class="reading-alert">
+      <span class="reading-alert-icon">!</span>
+      <div><strong>O Conferinho protegeu você de um resultado falso.</strong><p>Como um dos lados ficou com zero registros, ele não marcou todas as notas como ausentes. O relatório precisa ter o layout reconhecido antes da comparação.</p></div>
+    </div>` : '';
 
   els.validationPanel.innerHTML = `
+    ${warning}
     <div class="validation-title"><strong>Leitura dos arquivos</strong><span>A ferramenta reuniu todos os PDFs de cada grupo antes de comparar.</span></div>
     <div class="validation-grid">
       <div class="validation-item"><span>Arquivos da SEFAZ</span><strong>${state.demoMode ? 2 : state.sefazFiles.length} arquivo(s) · ${state.meta.sefazPages} página(s)</strong></div>
       <div class="validation-item"><span>Arquivos do sistema</span><strong>${state.demoMode ? 2 : state.systemFiles.length} arquivo(s) · ${state.meta.systemPages} página(s)</strong></div>
-      <div class="validation-item"><span>Registros reconhecidos</span><strong>${state.meta.parsedSefaz + state.meta.parsedSystem} registros</strong></div>
-      <div class="validation-item"><span>Critério principal</span><strong>Número da nota + valor + fornecedor</strong></div>
+      <div class="validation-item"><span>Registros SEFAZ</span><strong>${state.meta.parsedSefaz} registros</strong></div>
+      <div class="validation-item"><span>Registros do outro grupo</span><strong>${state.meta.parsedSystem} registros</strong></div>
     </div>
+    <div class="diagnostic-list">${diagnosticRows}</div>
   `;
 }
 

@@ -1,26 +1,28 @@
-# Conferinho — Demo do Comparador de Relatórios
+# Conferinho — demo corrigida
 
-Demo visual e funcional do **Conferinho**, criada com a identidade aprovada do mascote.
+Comparador de relatórios fiscais em PDF com suporte a vários arquivos em cada grupo.
+
+## Correções desta versão
+
+- O leitor do relatório interno deixou de depender de posições fixas das colunas.
+- As colunas `Data`, `Nota`, `Fornecedor`, `UF` e `Valor Contábil` são identificadas pelo cabeçalho do próprio PDF.
+- Há uma leitura genérica de apoio para relatórios com pequenas mudanças de layout.
+- O layout da consulta de NF-e da SEFAZ/MS também ficou mais tolerante.
+- Cada arquivo agora exibe um diagnóstico com páginas, método de leitura e quantidade de registros reconhecidos.
+- Se um dos grupos resultar em zero registros, a comparação é interrompida. Assim, o sistema não marca todas as notas como ausentes por engano.
+- PDFs sem texto selecionável são identificados como possíveis arquivos digitalizados que precisarão de OCR.
 
 ## Como abrir
 
-Abra o arquivo `index.html` no navegador. Para testar sem PDFs, clique em **Testar com exemplo** e depois em **Conferir agora**.
+Abra `index.html` em um navegador com internet ou publique a pasta no Vercel. A internet é necessária nesta demo para carregar o PDF.js usado na leitura dos arquivos.
 
-## O que já funciona
+## Teste realizado
 
-- Inclusão de vários PDFs da SEFAZ.
-- Inclusão de vários PDFs do sistema, do cliente ou de outra fonte.
-- Remoção individual dos arquivos antes da comparação.
-- Leitura local de PDFs com texto selecionável.
-- Comparação por número da nota, data, valor e fornecedor.
-- Identificação de conferidos, divergências, ausências e possíveis duplicidades.
-- Filtros, busca, exportação CSV e impressão.
-- Layout responsivo para computador e celular.
+A versão foi validada com os dois modelos usados na criação do projeto:
 
-## Publicação no Vercel
+- consulta de NF-e da SEFAZ/MS: 65 registros reconhecidos;
+- acompanhamento de entradas do sistema: 3 registros reconhecidos.
 
-Envie toda esta pasta para um repositório no GitHub e importe o repositório no Vercel. O arquivo `vercel.json` já está incluído.
+## Limitação atual
 
-## Observação
-
-O reconhecimento atual foi preparado a partir dos dois modelos analisados. Outros layouts de PDF poderão receber novos leitores específicos sem alterar a identidade visual do sistema.
+Relatórios digitalizados como imagem ainda não passam por OCR. Para ajustar um novo layout específico, envie o PDF que não foi reconhecido para que as colunas sejam calibradas com o arquivo real.

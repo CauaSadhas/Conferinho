@@ -165,8 +165,8 @@
         <div class="result-title-wrap">
           <div class="result-mascot"><img src="assets/mascote-conferinho.jpg" alt="" /></div>
           <div>
-            <span class="eyebrow"><span class="eyebrow-dot"></span> CONFERÊNCIA CONCLUÍDA</span>
-            <h2>Prontinho! Veja o que eu encontrei.</h2>
+            <span class="eyebrow" id="resultEyebrow"><span class="eyebrow-dot"></span> CONFERÊNCIA CONCLUÍDA</span>
+            <h2 id="resultTitle">Prontinho! Veja o que eu encontrei.</h2>
             <p id="resultSubtitle">Os arquivos foram reunidos e comparados.</p>
           </div>
         </div>
@@ -243,8 +243,8 @@
           </table>
           <div id="emptyResults" class="empty-results hidden">
             <div class="empty-icon">⌕</div>
-            <strong>Nenhum item encontrado</strong>
-            <span>Altere o filtro ou o termo de busca.</span>
+            <strong id="emptyResultsTitle">Nenhum item encontrado</strong>
+            <span id="emptyResultsText">Altere o filtro ou o termo de busca.</span>
           </div>
         </div>
       </div>
