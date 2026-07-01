@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Conferinho: comparador inteligente de dois conjuntos de relatórios em PDF, com leitura automática de diferentes layouts." />
-  <title>Conferinho — Comparador Inteligente de Relatórios</title>
+  <meta name="description" content="Conferinho: comparador inteligente de relatórios e analisador de XML de NFS-e com ISS retido." />
+  <title>Conferinho — Conferência Fiscal</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -14,247 +14,82 @@
       <span class="brand-icon" aria-hidden="true">
         <svg viewBox="0 0 64 64"><path d="M13 5h38a8 8 0 0 1 8 8v29a8 8 0 0 1-8 8H30L18 59v-9h-5a8 8 0 0 1-8-8V13a8 8 0 0 1 8-8Z" fill="currentColor"/><path d="m18 28 9 9 20-21" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"/></svg>
       </span>
-      <span>
-        <span class="brand">Conferinho</span>
-        <span class="brand-subtitle">Compara. Confere. Dá certo.</span>
-      </span>
+      <span><span class="brand">Conferinho</span><span class="brand-subtitle">Compara. Confere. Dá certo.</span></span>
     </a>
-    <div class="top-actions">
-      <button class="button button-ghost" id="loadDemoBtn" type="button">
-        <span class="button-dot"></span> Testar com exemplo
-      </button>
-      <button class="button button-ghost" id="resetBtn" type="button">Limpar comparação</button>
-    </div>
+    <nav class="module-nav" aria-label="Módulos do Conferinho">
+      <button class="module-button active" data-module="pdf" type="button"><span>⇄</span> Comparador de relatórios</button>
+      <button class="module-button" data-module="nfse" type="button"><span>XML</span> Analisador NFS-e</button>
+    </nav>
+    <button class="button button-ghost" id="globalResetBtn" type="button">Limpar módulo</button>
   </header>
 
   <main class="page-shell" id="top">
     <section class="hero">
       <div class="hero-copy">
         <span class="eyebrow"><span class="eyebrow-dot"></span> SEU ASSISTENTE DE CONFERÊNCIA</span>
-        <h1>Deixe que o <span>Conferinho</span> encontre as diferenças para você.</h1>
-        <p>Envie dois relatórios, de qualquer origem. O Conferinho identifica automaticamente datas, valores, documentos, nomes e linhas de tabela para mostrar o que está igual, diferente ou ausente.</p>
-        <div class="hero-benefits" aria-label="Benefícios do Conferinho">
-          <span><b>✓</b> Dois campos de upload simples</span>
-          <span><b>✓</b> Leitura automática de layouts</span>
-          <span><b>✓</b> Diferenças prontas para revisar</span>
-        </div>
-        <div class="hero-actions">
-          <a class="button button-primary button-hero" href="#uploadSection">Começar conferência</a>
-          <span class="privacy-note"><span>●</span> Seus arquivos ficam no navegador nesta demo</span>
+        <h1 id="heroTitle">Deixe que o <span>Conferinho</span> encontre as diferenças para você.</h1>
+        <p id="heroText">Envie dois relatórios, de qualquer origem. O Conferinho organiza os dados e mostra o que está igual, diferente ou ausente.</p>
+        <div class="hero-benefits" id="heroBenefits">
+          <span><b>✓</b> Vários arquivos de cada lado</span><span><b>✓</b> Leitura automática</span><span><b>✓</b> Resultado exportável</span>
         </div>
       </div>
-
       <div class="hero-visual" aria-label="Mascote Conferinho">
-        <div class="warm-orb orb-one"></div>
-        <div class="warm-orb orb-two"></div>
+        <div class="warm-orb orb-one"></div><div class="warm-orb orb-two"></div>
         <div class="mascot-frame">
-          <img src="assets/mascote-conferinho.jpg" alt="Conferinho segurando dois relatórios fiscais e conferindo as diferenças com uma lupa" />
+          <img src="assets/mascote-conferinho.jpg" alt="Mascote Conferinho" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
+          <div class="mascot-fallback" hidden>🤖</div>
         </div>
-        <div class="mascot-message">
-          <span class="message-check">✓</span>
-          <div><strong>Olá, eu sou o Conferinho!</strong><small>Envie os dois relatórios e eu procuro as diferenças.</small></div>
-        </div>
+        <div class="mascot-message"><span class="message-check">✓</span><div><strong>Olá, eu sou o Conferinho!</strong><small id="mascotMessage">Envie os dois relatórios e eu procuro as diferenças.</small></div></div>
       </div>
     </section>
 
-    <section class="flow-intro">
-      <span class="flow-kicker">É simples</span>
-      <h2>Dois campos de upload. Uma comparação automática.</h2>
-      <p>Envie um ou mais PDFs em cada lado. Não é necessário escolher SEFAZ, sistema ou um modelo específico.</p>
+    <section id="pdfModule" class="module-section">
+      <div class="flow-intro"><span class="flow-kicker">COMPARADOR</span><h2>Dois grupos de relatórios. Uma comparação automática.</h2><p>Envie um ou vários PDFs em cada lado.</p></div>
+      <section class="upload-grid">
+        <article class="panel upload-panel">
+          <div class="panel-heading"><div class="step-number">1</div><div><span class="panel-kicker">PRIMEIRO LADO</span><h2>Relatório 1</h2><p>Arquivo usado como referência.</p></div><span class="multi-badge">1 ou vários PDFs</span></div>
+          <label class="dropzone" id="reportADropzone" for="reportAInput"><input id="reportAInput" type="file" accept="application/pdf,.pdf" multiple /><span class="drop-icon">⇧</span><strong>Solte aqui o Relatório 1</strong><span>ou clique para selecionar os PDFs</span><em>Qualquer origem ou layout</em></label>
+          <div class="file-list" id="reportAFileList"></div>
+        </article>
+        <div class="compare-bridge" aria-hidden="true"><span></span><b>↔</b><span></span></div>
+        <article class="panel upload-panel warm-panel">
+          <div class="panel-heading"><div class="step-number warm">2</div><div><span class="panel-kicker">SEGUNDO LADO</span><h2>Relatório 2</h2><p>Arquivo que será conferido.</p></div><span class="multi-badge warm">1 ou vários PDFs</span></div>
+          <label class="dropzone warm" id="reportBDropzone" for="reportBInput"><input id="reportBInput" type="file" accept="application/pdf,.pdf" multiple /><span class="drop-icon warm">⇧</span><strong>Solte aqui o Relatório 2</strong><span>ou clique para selecionar os PDFs</span><em>Qualquer origem ou layout</em></label>
+          <div class="file-list" id="reportBFileList"></div>
+        </article>
+      </section>
+      <section class="panel action-panel">
+        <div><span class="panel-kicker">COMPARAÇÃO INTELIGENTE</span><h2>O Conferinho escolhe a melhor forma de ler</h2><p id="pdfStatusHint">Estou esperando pelo menos um PDF em cada campo.</p></div>
+        <button class="button button-primary button-large" id="compareBtn" type="button" disabled>✓ Comparar relatórios</button>
+      </section>
+      <section id="pdfProgress" class="panel progress-panel hidden" aria-live="polite"><div class="progress-avatar">🤖</div><div class="progress-content"><div class="progress-head"><strong id="pdfProgressTitle">Lendo relatórios...</strong><span id="pdfProgressPercent">0%</span></div><div class="progress-track"><div id="pdfProgressBar" class="progress-bar"></div></div><p id="pdfProgressDetail">Preparando arquivos</p></div></section>
+      <section id="pdfResults" class="results-section hidden">
+        <div class="results-header"><div><span class="eyebrow"><span class="eyebrow-dot"></span> CONFERÊNCIA CONCLUÍDA</span><h2>Prontinho! Veja o que eu encontrei.</h2><p id="pdfResultSubtitle"></p></div><div class="results-actions"><button class="button button-ghost" id="pdfExportBtn">Exportar CSV</button><button class="button button-secondary" id="pdfPrintBtn">Imprimir relatório</button></div></div>
+        <div class="summary-grid five"><button class="summary-card active" data-pdf-filter="all"><span>Registros</span><strong id="pdfTotalCount">0</strong><small>analisados</small></button><button class="summary-card success" data-pdf-filter="ok"><span>Conferidos</span><strong id="pdfOkCount">0</strong><small>sem diferença</small></button><button class="summary-card warning" data-pdf-filter="divergent"><span>Divergentes</span><strong id="pdfDivergentCount">0</strong><small>precisam revisar</small></button><button class="summary-card danger" data-pdf-filter="missing"><span>Não localizados</span><strong id="pdfMissingCount">0</strong><small>em um dos lados</small></button><button class="summary-card purple" data-pdf-filter="duplicate"><span>Duplicados</span><strong id="pdfDuplicateCount">0</strong><small>possíveis repetições</small></button></div>
+        <div class="panel validation-panel" id="pdfValidationPanel"></div>
+        <div class="panel table-panel"><div class="table-toolbar"><div class="filter-tabs"><button class="filter-tab active" data-pdf-filter="all">Todos</button><button class="filter-tab" data-pdf-filter="missing-b">Só no Relatório 1</button><button class="filter-tab" data-pdf-filter="missing-a">Só no Relatório 2</button><button class="filter-tab" data-pdf-filter="divergent">Divergentes</button><button class="filter-tab" data-pdf-filter="ok">Conferidos</button></div><label class="search-box">⌕<input id="pdfSearchInput" placeholder="Buscar identificador ou descrição" /></label></div><div class="table-wrap"><table><thead><tr><th>Situação</th><th>Identificador</th><th>Descrição</th><th>Data Rel. 1</th><th>Data Rel. 2</th><th class="align-right">Valor Rel. 1</th><th class="align-right">Valor Rel. 2</th><th>Arquivos</th></tr></thead><tbody id="pdfResultsBody"></tbody></table><div id="pdfEmptyResults" class="empty-results hidden"><div>⌕</div><strong>Nenhum item encontrado</strong><span>Altere o filtro ou o termo de busca.</span></div></div></div>
+      </section>
     </section>
 
-    <section class="upload-grid" id="uploadSection">
-      <article class="panel upload-panel sefaz-panel">
-        <div class="panel-heading">
-          <div class="step-number">1</div>
-          <div class="panel-title-wrap">
-            <span class="panel-kicker">PRIMEIRO LADO</span>
-            <h2>Relatório 1</h2>
-            <p>Envie o primeiro relatório que será usado como referência na comparação.</p>
-          </div>
-          <span class="multi-badge">1 ou vários PDFs</span>
-        </div>
-        <label class="dropzone" id="reportADropzone" for="reportAInput">
-          <input id="reportAInput" type="file" accept="application/pdf,.pdf" multiple />
-          <div class="drop-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <strong>Solte aqui o Relatório 1</strong>
-          <span>ou clique para selecionar os PDFs</span>
-          <em>Qualquer origem ou layout</em>
-        </label>
-        <div class="file-list" id="reportAFileList"></div>
-      </article>
-
-      <div class="compare-bridge" aria-hidden="true">
-        <span></span><b>↔</b><span></span>
-      </div>
-
-      <article class="panel upload-panel system-panel">
-        <div class="panel-heading">
-          <div class="step-number">2</div>
-          <div class="panel-title-wrap">
-            <span class="panel-kicker">SEGUNDO LADO</span>
-            <h2>Relatório 2</h2>
-            <p>Envie o relatório que será conferido com o primeiro arquivo.</p>
-          </div>
-          <span class="multi-badge warm">1 ou vários PDFs</span>
-        </div>
-        <label class="dropzone" id="reportBDropzone" for="reportBInput">
-          <input id="reportBInput" type="file" accept="application/pdf,.pdf" multiple />
-          <div class="drop-icon warm" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <strong>Solte aqui o Relatório 2</strong>
-          <span>ou clique para selecionar os PDFs</span>
-          <em>Qualquer origem ou layout</em>
-        </label>
-        <div class="file-list" id="reportBFileList"></div>
-      </article>
-    </section>
-
-    <section class="panel settings-panel smart-panel">
-      <div class="settings-head">
-        <div class="panel-heading compact">
-          <div class="step-number smart-step">✦</div>
-          <div>
-            <span class="panel-kicker">COMPARAÇÃO INTELIGENTE</span>
-            <h2>O Conferinho escolhe a melhor forma de ler</h2>
-            <p>Ele procura tabelas, datas, valores, números de documentos, nomes, CNPJ/CPF e também compara linhas de texto quando o relatório não tem uma tabela tradicional.</p>
-          </div>
-        </div>
-        <div class="helper-chip"><span>✓</span> Sem configuração de layout</div>
-      </div>
-      <div class="smart-features">
-        <span><b>1</b> Texto e tabelas</span>
-        <span><b>2</b> OCR para PDF escaneado</span>
-        <span><b>3</b> Correspondência por semelhança</span>
-        <span><b>4</b> Diferenças campo a campo</span>
-      </div>
-      <div class="action-row">
-        <div class="status-hint" id="statusHint"><span class="status-dot"></span>Estou esperando pelo menos um PDF em cada campo.</div>
-        <button class="button button-primary button-large" id="compareBtn" type="button" disabled>
-          <span class="mini-check">✓</span>
-          <span id="compareBtnText">Comparar relatórios</span>
-          <svg viewBox="0 0 24 24" fill="none"><path d="m9 18 6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      </div>
-    </section>
-
-    <section id="progressSection" class="panel progress-panel hidden" aria-live="polite">
-      <div class="progress-mascot"><img src="assets/mascote-conferinho.jpg" alt="" /></div>
-      <div class="progress-content">
-        <div class="progress-head"><strong id="progressTitle">Lendo os relatórios...</strong><span id="progressPercent">0%</span></div>
-        <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
-        <p id="progressDetail">Preparando arquivos</p>
-      </div>
-    </section>
-
-    <section id="resultsSection" class="results-section hidden">
-      <div class="results-header">
-        <div class="result-title-wrap">
-          <div class="result-mascot"><img src="assets/mascote-conferinho.jpg" alt="" /></div>
-          <div>
-            <span class="eyebrow" id="resultEyebrow"><span class="eyebrow-dot"></span> CONFERÊNCIA CONCLUÍDA</span>
-            <h2 id="resultTitle">Prontinho! Veja o que eu encontrei.</h2>
-            <p id="resultSubtitle">Os arquivos foram reunidos e comparados.</p>
-          </div>
-        </div>
-        <div class="results-actions">
-          <button class="button button-ghost" id="exportBtn" type="button">Exportar CSV</button>
-          <button class="button button-secondary" id="printBtn" type="button">Imprimir relatório</button>
-        </div>
-      </div>
-
-      <div class="summary-grid">
-        <button class="summary-card active" data-filter="all" type="button">
-          <span class="summary-icon">⌁</span>
-          <span class="summary-label">Registros analisados</span>
-          <strong id="totalCount">0</strong>
-          <span class="summary-foot">nos dois grupos</span>
-        </button>
-        <button class="summary-card success" data-filter="ok" type="button">
-          <span class="summary-icon">✓</span>
-          <span class="summary-label">Conferidos</span>
-          <strong id="okCount">0</strong>
-          <span class="summary-foot">sem diferenças</span>
-        </button>
-        <button class="summary-card warning" data-filter="divergent" type="button">
-          <span class="summary-icon">!</span>
-          <span class="summary-label">Com divergência</span>
-          <strong id="divergentCount">0</strong>
-          <span class="summary-foot">valor, data, descrição ou campo</span>
-        </button>
-        <button class="summary-card danger" data-filter="missing" type="button">
-          <span class="summary-icon">−</span>
-          <span class="summary-label">Não localizados</span>
-          <strong id="missingCount">0</strong>
-          <span class="summary-foot">em um dos relatórios</span>
-        </button>
-        <button class="summary-card purple" data-filter="duplicate" type="button">
-          <span class="summary-icon">⧉</span>
-          <span class="summary-label">Possíveis duplicados</span>
-          <strong id="duplicateCount">0</strong>
-          <span class="summary-foot">repetidos no mesmo grupo</span>
-        </button>
-      </div>
-
-      <div class="panel validation-panel" id="validationPanel"></div>
-
-      <div class="panel table-panel">
-        <div class="table-toolbar">
-          <div class="filter-tabs" role="tablist" aria-label="Filtros de resultado">
-            <button class="filter-tab active" data-filter="all" type="button">Todos</button>
-            <button class="filter-tab" data-filter="missing-b" type="button">Só no Relatório 1</button>
-            <button class="filter-tab" data-filter="missing-a" type="button">Só no Relatório 2</button>
-            <button class="filter-tab" data-filter="divergent" type="button">Divergentes</button>
-            <button class="filter-tab" data-filter="ok" type="button">Conferidos</button>
-          </div>
-          <label class="search-box">
-            <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="m20 20-4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            <input id="searchInput" placeholder="Buscar identificador ou descrição" />
-          </label>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Situação</th>
-                <th>Identificador</th>
-                <th>Descrição</th>
-                <th>Data Relatório 1</th>
-                <th>Data Relatório 2</th>
-                <th class="align-right">Valor Relatório 1</th>
-                <th class="align-right">Valor Relatório 2</th>
-                <th>Arquivos</th>
-              </tr>
-            </thead>
-            <tbody id="resultsBody"></tbody>
-          </table>
-          <div id="emptyResults" class="empty-results hidden">
-            <div class="empty-icon">⌕</div>
-            <strong id="emptyResultsTitle">Nenhum item encontrado</strong>
-            <span id="emptyResultsText">Altere o filtro ou o termo de busca.</span>
-          </div>
-        </div>
-      </div>
+    <section id="nfseModule" class="module-section hidden">
+      <div class="flow-intro"><span class="flow-kicker">NOVO MÓDULO</span><h2>Relatório de NFS-e com retenção de ISS.</h2><p>Envie vários XMLs. O Conferinho identifica as notas retidas e soma os serviços e o ISS.</p></div>
+      <section class="panel nfse-upload-panel">
+        <label class="dropzone nfse-dropzone" id="nfseDropzone" for="nfseInput"><input id="nfseInput" type="file" accept=".xml,text/xml,application/xml" multiple /><span class="drop-icon">XML</span><strong>Arraste seus XMLs de NFS-e aqui</strong><span>ou clique para selecionar vários arquivos</span><em>Os arquivos são processados somente no navegador</em></label>
+        <div class="nfse-upload-footer"><div id="nfseQueueText"><strong>Nenhum XML selecionado</strong><span>Você pode mandar muitos arquivos de uma vez.</span></div><button class="button button-primary" id="nfseAnalyzeBtn" disabled>✓ Analisar XMLs</button></div>
+        <div class="file-list" id="nfseFileList"></div>
+      </section>
+      <section id="nfseProgress" class="panel progress-panel hidden" aria-live="polite"><div class="progress-avatar">XML</div><div class="progress-content"><div class="progress-head"><strong id="nfseProgressTitle">Analisando arquivos...</strong><span id="nfseProgressPercent">0%</span></div><div class="progress-track"><div id="nfseProgressBar" class="progress-bar"></div></div><p id="nfseProgressDetail">Preparando leitura</p></div></section>
+      <section id="nfseResults" class="results-section hidden">
+        <div class="results-header"><div><span class="eyebrow"><span class="eyebrow-dot"></span> ANÁLISE CONCLUÍDA</span><h2>Resumo das NFS-e com retenção.</h2><p id="nfseResultSubtitle"></p></div><div class="results-actions"><button class="button button-ghost" id="nfseExportBtn">Exportar CSV</button><button class="button button-secondary" id="nfsePrintBtn">Imprimir relatório</button></div></div>
+        <div class="summary-grid four"><button class="summary-card active" data-nfse-filter="all"><span>XMLs processados</span><strong id="nfseFilesCount">0</strong><small id="nfseFilesErrorText">Nenhum erro</small></button><button class="summary-card" data-nfse-filter="all"><span>NFS-e encontradas</span><strong id="nfseNotesCount">0</strong><small>total identificado</small></button><button class="summary-card success" data-nfse-filter="retained"><span>Serviços com ISS retido</span><strong id="nfseServicesTotal">R$ 0,00</strong><small id="nfseRetainedCount">0 notas</small></button><button class="summary-card warning" data-nfse-filter="retained"><span>ISS retido total</span><strong id="nfseIssTotal">R$ 0,00</strong><small>soma do imposto</small></button></div>
+        <div id="nfseWarnings" class="panel warning-box hidden"><strong>Alguns arquivos precisam de atenção</strong><ul id="nfseWarningsList"></ul></div>
+        <div class="panel table-panel"><div class="table-toolbar"><div class="filter-tabs"><button class="filter-tab active" data-nfse-filter="retained">Somente com ISS retido</button><button class="filter-tab" data-nfse-filter="all">Todas as notas</button></div><label class="search-box">⌕<input id="nfseSearchInput" placeholder="Buscar nota, prestador ou tomador" /></label></div><div class="table-wrap"><table class="nfse-table"><thead><tr><th>Arquivo</th><th>NFS-e</th><th>Emissão</th><th>Prestador</th><th>Tomador</th><th class="align-right">Valor do serviço</th><th>ISS retido</th><th class="align-right">Valor do ISS</th><th>Situação</th></tr></thead><tbody id="nfseResultsBody"></tbody></table><div id="nfseEmptyResults" class="empty-results hidden"><div>⌕</div><strong>Nenhuma nota encontrada</strong><span>Altere o filtro ou a busca.</span></div></div></div>
+      </section>
     </section>
   </main>
 
-  <footer class="site-footer">
-    <div class="footer-inner">
-      <div class="footer-brand">
-        <span class="brand-icon small" aria-hidden="true">
-          <svg viewBox="0 0 64 64"><path d="M13 5h38a8 8 0 0 1 8 8v29a8 8 0 0 1-8 8H30L18 59v-9h-5a8 8 0 0 1-8-8V13a8 8 0 0 1 8-8Z" fill="currentColor"/><path d="m18 28 9 9 20-21" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"/></svg>
-        </span>
-        <div><strong>Conferinho</strong><span>Compara. Confere. Dá certo.</span></div>
-      </div>
-      <p>Comparador inteligente de relatórios em PDF. Os arquivos são processados localmente no navegador nesta demo.</p>
-    </div>
-  </footer>
-
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><span class="brand-icon small"><svg viewBox="0 0 64 64"><path d="M13 5h38a8 8 0 0 1 8 8v29a8 8 0 0 1-8 8H30L18 59v-9h-5a8 8 0 0 1-8-8V13a8 8 0 0 1 8-8Z" fill="currentColor"/><path d="m18 28 9 9 20-21" fill="none" stroke="#fff" stroke-width="6"/></svg></span><div><strong>Conferinho</strong><span>Compara. Confere. Dá certo.</span></div></div><p>Os PDFs e XMLs são processados localmente no navegador.</p></div></footer>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="app.js"></script>
