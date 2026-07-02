@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Conferinho: comparador inteligente de relatórios e analisador de XML de NFS-e com ISS retido." />
+  <meta name="description" content="Conferinho: comparador de relatórios, analisador de XML de NFS-e e somador de notas em imagens e PDFs." />
   <title>Conferinho — Conferência Fiscal</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css" />
@@ -19,6 +19,7 @@
     <nav class="module-nav" aria-label="Módulos do Conferinho">
       <button class="module-button active" data-module="pdf" type="button"><span>⇄</span> Comparador de relatórios</button>
       <button class="module-button" data-module="nfse" type="button"><span>XML</span> Analisador NFS-e</button>
+      <button class="module-button" data-module="sum" type="button"><span>Σ</span> Somador de NFs</button>
     </nav>
     <button class="button button-ghost" id="globalResetBtn" type="button">Limpar módulo</button>
   </header>
@@ -86,9 +87,27 @@
         <div class="panel table-panel"><div class="table-toolbar"><div class="filter-tabs"><button class="filter-tab active" data-nfse-filter="retained">Somente com ISS retido</button><button class="filter-tab" data-nfse-filter="all">Todas as notas</button></div><label class="search-box">⌕<input id="nfseSearchInput" placeholder="Buscar nota, prestador ou tomador" /></label></div><div class="table-wrap"><table class="nfse-table"><thead><tr><th>Arquivo</th><th>NFS-e</th><th>Emissão</th><th>Prestador</th><th>Tomador</th><th class="align-right">Valor do serviço</th><th>ISS retido</th><th class="align-right">Valor do ISS</th><th>Situação</th></tr></thead><tbody id="nfseResultsBody"></tbody></table><div id="nfseEmptyResults" class="empty-results hidden"><div>⌕</div><strong>Nenhuma nota encontrada</strong><span>Altere o filtro ou a busca.</span></div></div></div>
       </section>
     </section>
+
+
+    <section id="sumModule" class="module-section hidden">
+      <div class="flow-intro"><span class="flow-kicker">SOMADOR DE NOTAS</span><h2>Envie um print ou PDF e receba o total das NFs.</h2><p>O Conferinho lê as notas, encontra o valor total de cada NF e monta um relatório revisável.</p></div>
+      <section class="panel nfse-upload-panel">
+        <label class="dropzone sum-dropzone" id="sumDropzone" for="sumInput"><input id="sumInput" type="file" accept="application/pdf,.pdf,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" multiple /><span class="drop-icon">Σ</span><strong>Arraste seus prints ou PDFs aqui</strong><span>ou clique para selecionar um ou vários arquivos</span><em>PDF, PNG, JPG ou WEBP — leitura local com OCR</em></label>
+        <div class="nfse-upload-footer"><div id="sumQueueText"><strong>Nenhum arquivo selecionado</strong><span>Use imagens nítidas e sem cortes para melhorar a leitura.</span></div><button class="button button-primary" id="sumAnalyzeBtn" disabled>Σ Ler e somar NFs</button></div>
+        <div class="file-list" id="sumFileList"></div>
+      </section>
+      <section id="sumProgress" class="panel progress-panel hidden" aria-live="polite"><div class="progress-avatar">OCR</div><div class="progress-content"><div class="progress-head"><strong id="sumProgressTitle">Lendo documentos...</strong><span id="sumProgressPercent">0%</span></div><div class="progress-track"><div id="sumProgressBar" class="progress-bar"></div></div><p id="sumProgressDetail">Preparando arquivos</p></div></section>
+      <section id="sumResults" class="results-section hidden">
+        <div class="results-header"><div><span class="eyebrow"><span class="eyebrow-dot"></span> SOMA CONCLUÍDA</span><h2>Relatório das notas identificadas.</h2><p id="sumResultSubtitle">Confira os itens antes de exportar.</p></div><div class="results-actions"><button class="button button-ghost" id="sumAddBtn" type="button">+ Adicionar NF</button><button class="button button-ghost" id="sumExportBtn" type="button">Exportar CSV</button><button class="button button-secondary" id="sumPrintBtn" type="button">Imprimir / salvar PDF</button></div></div>
+        <div class="summary-grid four"><button class="summary-card active" data-sum-filter="all"><span>Arquivos e páginas</span><strong id="sumPagesCount">0</strong><small id="sumFilesCountText">0 arquivos</small></button><button class="summary-card success" data-sum-filter="included"><span>NFs incluídas</span><strong id="sumNotesCount">0</strong><small>usadas na soma</small></button><button class="summary-card warning" data-sum-filter="review"><span>Precisam revisar</span><strong id="sumReviewCount">0</strong><small>OCR ou duplicidade</small></button><button class="summary-card sum-total-card" data-sum-filter="included"><span>Valor total das NFs</span><strong id="sumGrandTotal">R$ 0,00</strong><small>soma dos itens marcados</small></button></div>
+        <div class="panel validation-panel sum-help"><strong>Como funciona:</strong> o Conferinho procura o número da NF e o valor total ligado a ela. Itens incertos ficam marcados para revisão. Você pode corrigir o número, alterar o valor, desmarcar uma linha ou adicionar uma NF manualmente antes de exportar.</div>
+        <div id="sumWarnings" class="panel warning-box hidden"><strong>Atenção na conferência</strong><ul id="sumWarningsList"></ul></div>
+        <div class="panel table-panel"><div class="table-toolbar"><div class="filter-tabs"><button class="filter-tab active" data-sum-filter="all">Todas</button><button class="filter-tab" data-sum-filter="included">Incluídas na soma</button><button class="filter-tab" data-sum-filter="review">Precisam revisar</button><button class="filter-tab" data-sum-filter="excluded">Desmarcadas</button></div><label class="search-box">⌕<input id="sumSearchInput" placeholder="Buscar NF ou arquivo" /></label></div><div class="table-wrap"><table class="sum-table"><thead><tr><th>Incluir</th><th>Situação</th><th>Número da NF</th><th class="align-right">Valor total</th><th>Arquivo / página</th><th>Trecho reconhecido</th><th></th></tr></thead><tbody id="sumResultsBody"></tbody></table><div id="sumEmptyResults" class="empty-results hidden"><div>⌕</div><strong>Nenhuma NF encontrada</strong><span>Tente outra imagem ou adicione uma linha manualmente.</span></div></div></div>
+      </section>
+    </section>
   </main>
 
-  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><span class="brand-icon small"><svg viewBox="0 0 64 64"><path d="M13 5h38a8 8 0 0 1 8 8v29a8 8 0 0 1-8 8H30L18 59v-9h-5a8 8 0 0 1-8-8V13a8 8 0 0 1 8-8Z" fill="currentColor"/><path d="m18 28 9 9 20-21" fill="none" stroke="#fff" stroke-width="6"/></svg></span><div><strong>Conferinho</strong><span>Compara. Confere. Dá certo.</span></div></div><p>Os PDFs e XMLs são processados localmente no navegador.</p></div></footer>
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><span class="brand-icon small"><svg viewBox="0 0 64 64"><path d="M13 5h38a8 8 0 0 1 8 8v29a8 8 0 0 1-8 8H30L18 59v-9h-5a8 8 0 0 1-8-8V13a8 8 0 0 1 8-8Z" fill="currentColor"/><path d="m18 28 9 9 20-21" fill="none" stroke="#fff" stroke-width="6"/></svg></span><div><strong>Conferinho</strong><span>Compara. Confere. Dá certo.</span></div></div><p>Os PDFs, imagens e XMLs são processados localmente no navegador.</p></div></footer>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>

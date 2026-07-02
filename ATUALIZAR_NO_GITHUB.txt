@@ -1,50 +1,22 @@
-ATUALIZAÇÃO DO CONFERINHO — COMPARADOR + ANALISADOR NFS-e
+CONFERINHO — ATUALIZAÇÃO COM SOMADOR DE NFs
 
-Arquivos desta atualização:
-- index.html
-- styles.css
-- app.js
+O que foi acrescentado:
+- Novo módulo “Somador de NFs”.
+- Upload de prints em PNG, JPG ou WEBP.
+- Upload de PDFs com texto ou páginas digitalizadas.
+- OCR para reconhecer número e valor total das notas.
+- Soma automática somente das linhas marcadas.
+- Edição manual do número e do valor.
+- Detecção de possíveis duplicidades.
+- Exportação em CSV e impressão/salvamento em PDF.
 
-COMO SUBIR NO GITHUB:
-1. Abra o repositório verdadeiro do Conferinho.
-2. Clique em Add file > Upload files.
-3. Arraste os 3 arquivos acima para a raiz do repositório.
-4. Quando o GitHub perguntar, confirme Replace files / substituir arquivos existentes.
-5. NÃO apague a pasta assets. O novo index.html continua usando:
-   assets/mascote-conferinho.jpg
-   assets/favicon.svg
-6. Clique em Commit changes.
-7. A Vercel deverá publicar a atualização automaticamente.
+COMO ATUALIZAR NO GITHUB
+1. Extraia este ZIP.
+2. Abra o repositório verdadeiro do Conferinho no GitHub.
+3. Envie/substitua index.html, styles.css e app.js na raiz.
+4. Não apague a pasta assets do seu repositório.
+5. Clique em Commit changes.
+6. Aguarde a Vercel publicar.
 
-O QUE FOI ACRESCENTADO:
-- Menu para alternar entre "Comparador de relatórios" e "Analisador NFS-e".
-- Upload de vários XMLs de NFS-e.
-- Identificação de ISS retido.
-- Soma dos valores dos serviços com retenção.
-- Soma do valor total do ISS retido.
-- Lista de prestador, tomador, nota, data e valores.
-- Filtro de notas retidas / todas as notas.
-- Exportação em CSV e impressão.
-- Processamento local no navegador.
-
-IMPORTANTE:
-A leitura reconhece campos comuns dos padrões ABRASF e NFS-e Nacional. Prefeituras podem usar nomes de campos próprios; nesses casos, basta enviar um XML de exemplo para mapear o layout adicional.
-
-
-ATUALIZAÇÃO DA COMPARAÇÃO DE PDF
-- A ordem das notas nos relatórios não interfere mais.
-- A comparação é feita pelo número da nota.
-- Encontrou o mesmo número e o mesmo valor: Conferido.
-- Encontrou o mesmo número com valor diferente: Valor divergente.
-- Não encontrou o número no outro relatório: Não localizado.
-- O leitor possui tratamento específico para relatório SEFAZ/MS, Acompanhamento de Entradas e Livro Caixa.
-
-ATUALIZAÇÃO — REGRA EXATA NF + VALOR
-- Exemplo: encontrou a NF 3249028 no Relatório 1.
-- O Conferinho identifica o valor ligado a essa NF.
-- Depois procura a NF 3249028 em qualquer posição do Relatório 2.
-- Mesmo número + mesmo valor: CONFERIDO.
-- Mesmo número + valor diferente: DIVERGENTE, mostrando os dois valores.
-- Número não encontrado: AUSENTE, informando em qual relatório a NF não está.
-- A ordem, página ou posição da nota não interfere na comparação.
-- Foram adicionados tratamentos para expressões como NF, NF-e, NFS-e, Nota Fiscal, Número da Nota, Valor da Nota, Valor Contábil, Valor Total e Total NF.
+IMPORTANTE
+O OCR depende da nitidez do print. Por isso o relatório permite revisar, editar, desmarcar e adicionar linhas antes de usar o total.

@@ -5,6 +5,7 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const pdfState = { filesA: [], filesB: [], records: [], filter: "all", search: "" };
 const nfseState = { files: [], notes: [], warnings: [], processed: 0, failed: 0, filter: "retained", search: "" };
+const sumState = { files: [], records: [], warnings: [], pages: 0, filter: "all", search: "" };
 
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
@@ -20,6 +21,12 @@ const moduleCopy = {
     text: "Envie vários XMLs de NFS-e. Eu encontro as notas com retenção de ISS e preparo o total dos serviços e do imposto retido.",
     benefits: ["Vários XMLs de uma vez", "Soma dos serviços retidos", "Relatório em CSV"],
     mascot: "Pode mandar os XMLs que eu separo as retenções."
+  },
+  sum: {
+    title: 'Mande um print e o <span>Conferinho</span> soma as NFs.',
+    text: "Envie imagens ou PDFs. Eu identifico cada número de nota, encontro seu valor total e preparo um relatório para conferência.",
+    benefits: ["Print ou PDF", "Leitura por OCR", "Total e relatório revisável"],
+    mascot: "Pode mandar o documento que eu leio e somo as notas."
   }
 };
 
@@ -60,6 +67,7 @@ function activateModule(name) {
   $$('.module-button').forEach((button) => button.classList.toggle('active', button.dataset.module === name));
   $('#pdfModule').classList.toggle('hidden', name !== 'pdf');
   $('#nfseModule').classList.toggle('hidden', name !== 'nfse');
+  $('#sumModule').classList.toggle('hidden', name !== 'sum');
   const copy = moduleCopy[name];
   $('#heroTitle').innerHTML = copy.title;
   $('#heroText').textContent = copy.text;
@@ -70,7 +78,7 @@ function activateModule(name) {
 
 $('#globalResetBtn').addEventListener('click', () => {
   const active = $('.module-button.active')?.dataset.module;
-  if (active === 'nfse') resetNfse(); else resetPdf();
+  if (active === 'nfse') resetNfse(); else if (active === 'sum') resetSum(); else resetPdf();
 });
 
 function bindDropzone(dropzone, input, accept, onFiles) {
@@ -588,3 +596,405 @@ function renderNfseWarnings(){const box=$('#nfseWarnings'),list=$('#nfseWarnings
 function renderNfseTable(){const tbody=$('#nfseResultsBody');tbody.innerHTML='';const notes=nfseState.notes.filter((note)=>{if(nfseState.filter==='retained'&&!note.retained)return false;const text=normalize([note.fileName,note.number,note.provider.name,note.provider.document,note.customer.name,note.customer.document,note.serviceCode].join(' '));return!nfseState.search||text.includes(nfseState.search);});notes.forEach((note)=>{const tr=document.createElement('tr');const statusOk=note.status==='Leitura concluída';tr.innerHTML=`<td><span class="file-name" title="${escapeHtml(note.fileName)}">${escapeHtml(note.fileName)}</span></td><td>${escapeHtml(note.number)}</td><td>${escapeHtml(note.date)}</td><td><span class="entity-name">${escapeHtml(note.provider.name)}</span><span class="entity-doc">${escapeHtml(formatDocument(note.provider.document))}</span></td><td><span class="entity-name">${escapeHtml(note.customer.name)}</span><span class="entity-doc">${escapeHtml(formatDocument(note.customer.document))}</span></td><td class="align-right">${note.serviceValue===null?'Não localizado':money.format(note.serviceValue)}</td><td><span class="status-badge ${note.retained?'status-divergent':'status-ok'}">${note.retained?'Sim':'Não'}</span></td><td class="align-right">${note.issValue===null?'Não localizado':money.format(note.issValue)}</td><td><span class="status-badge ${statusOk?'status-ok':'status-missing'}" title="${escapeHtml(note.status)}">${statusOk?'Conferido':'Atenção'}</span></td>`;tbody.appendChild(tr);});$('#nfseEmptyResults').classList.toggle('hidden',notes.length>0);tbody.parentElement.classList.toggle('hidden',notes.length===0);}
 function exportNfseCsv(){const notes=nfseState.notes.filter((n)=>n.retained);if(!notes.length)return showToast('Nenhuma NFS-e com ISS retido foi encontrada.',true);const rows=[['Arquivo','Número NFS-e','Data de emissão','Prestador','Documento prestador','Tomador','Documento tomador','Valor do serviço','ISS retido','Valor do ISS','Código do serviço','Código do município','Status']];notes.forEach((n)=>rows.push([n.fileName,n.number,n.date,n.provider.name,n.provider.document,n.customer.name,n.customer.document,n.serviceValue?.toFixed(2).replace('.',',')||'',n.retained?'Sim':'Não',n.issValue?.toFixed(2).replace('.',',')||'',n.serviceCode,n.municipalityCode,n.status]));const totalServices=notes.reduce((s,n)=>s+(n.serviceValue||0),0),totalIss=notes.reduce((s,n)=>s+(n.issValue||0),0);rows.push([]);rows.push(['TOTAL','','','','','','',totalServices.toFixed(2).replace('.',','),'',totalIss.toFixed(2).replace('.',',')]);downloadCsv(`conferinho-nfse-iss-retido-${new Date().toISOString().slice(0,10)}.csv`,rows);}
 function resetNfse(){nfseState.files=[];nfseState.notes=[];nfseState.warnings=[];nfseState.processed=0;nfseState.failed=0;nfseState.filter='retained';nfseState.search='';$('#nfseInput').value='';$('#nfseFileList').innerHTML='';$('#nfseSearchInput').value='';$('#nfseAnalyzeBtn').disabled=true;$('#nfseProgress').classList.add('hidden');$('#nfseResults').classList.add('hidden');$('#nfseQueueText').innerHTML='<strong>Nenhum XML selecionado</strong><span>Você pode mandar muitos arquivos de uma vez.</span>';showToast('Análise de NFS-e limpa.');}
+
+// -----------------------------------------------------------------------------
+// SOMADOR DE NFs — imagens e PDFs com revisão antes da soma
+// -----------------------------------------------------------------------------
+const SUM_ACCEPTED_FILE = /\.(pdf|png|jpe?g|webp)$/i;
+const SUM_MONEY_PATTERN = String.raw`(?:R\$\s*)?(?:\d{1,3}(?:[.\s]\d{3})+|\d+)[,.]\d{2}`;
+const SUM_NF_PATTERN = String.raw`(?:\bNF(?:-?E|S-?E)?\b|\bNFS(?:-?E)?\b|\bNOTA(?:\s+FISCAL)?\b|\bN[ÚU]MERO\s+(?:DA\s+)?NOTA\b)\s*(?:N[º°O.]?\s*)?[:#-]?\s*([0-9][0-9.\/-]{1,18})`;
+
+bindDropzone($('#sumDropzone'), $('#sumInput'), (file) => SUM_ACCEPTED_FILE.test(file.name), setSumFiles);
+
+function setSumFiles(files) {
+  sumState.files = files;
+  $('#sumAnalyzeBtn').disabled = !files.length;
+  $('#sumFileList').innerHTML = files.map((file) => `<span class="file-chip" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>`).join('');
+  $('#sumQueueText').innerHTML = files.length
+    ? `<strong>${files.length} arquivo(s) pronto(s)</strong><span>O Conferinho vai ler as páginas e procurar NF + valor total.</span>`
+    : '<strong>Nenhum arquivo selecionado</strong><span>Use imagens nítidas e sem cortes para melhorar a leitura.</span>';
+}
+
+$('#sumAnalyzeBtn').addEventListener('click', analyzeSumFiles);
+$('#sumSearchInput').addEventListener('input', (event) => { sumState.search = normalize(event.target.value); renderSumTable(); });
+$$('[data-sum-filter]').forEach((button) => button.addEventListener('click', () => {
+  sumState.filter = button.dataset.sumFilter;
+  $$('[data-sum-filter]').forEach((item) => item.classList.toggle('active', item.dataset.sumFilter === sumState.filter));
+  renderSumTable();
+}));
+$('#sumExportBtn').addEventListener('click', exportSumCsv);
+$('#sumPrintBtn').addEventListener('click', () => window.print());
+$('#sumAddBtn').addEventListener('click', addManualSumRecord);
+$('#sumResultsBody').addEventListener('change', handleSumTableChange);
+$('#sumResultsBody').addEventListener('click', handleSumTableClick);
+
+async function analyzeSumFiles() {
+  if (!sumState.files.length) return;
+  sumState.records = [];
+  sumState.warnings = [];
+  sumState.pages = 0;
+  $('#sumResults').classList.add('hidden');
+  $('#sumProgress').classList.remove('hidden');
+  $('#sumProgressTitle').textContent = 'Lendo documentos...';
+  $('#sumAnalyzeBtn').disabled = true;
+  updateSumProgress(0, 'Preparando arquivos');
+  try {
+    const output = [];
+    for (let fileIndex = 0; fileIndex < sumState.files.length; fileIndex++) {
+      const file = sumState.files[fileIndex];
+      updateSumProgress(fileIndex / sumState.files.length, `Lendo ${file.name}`);
+      try {
+        const pages = /\.pdf$/i.test(file.name) ? await extractSumPdfPages(file, fileIndex) : await extractSumImage(file, fileIndex);
+        sumState.pages += pages.length;
+        pages.forEach((page) => output.push(...parseSumPageText(page.text, file.name, page.page, page.method)));
+        if (!pages.some((page) => normalize(page.text).length > 20)) sumState.warnings.push(`${file.name}: não foi possível reconhecer texto suficiente.`);
+      } catch (error) {
+        sumState.warnings.push(`${file.name}: ${error.message}`);
+      }
+      await yieldBrowser();
+    }
+    sumState.records = finalizeSumRecords(output);
+    if (!sumState.records.length) sumState.warnings.push('Nenhuma combinação segura de número da NF e valor foi encontrada. Você pode adicionar as notas manualmente.');
+    updateSumProgress(1, `${sumState.records.length} NF(s) identificada(s)`);
+    $('#sumProgressTitle').textContent = 'Leitura concluída';
+    renderSumResults();
+  } catch (error) {
+    showToast(`Não foi possível ler os documentos: ${error.message}`, true);
+  } finally {
+    $('#sumAnalyzeBtn').disabled = false;
+  }
+}
+
+function updateSumProgress(ratio, detail) {
+  const value = Math.max(0, Math.min(100, Math.round(ratio * 100)));
+  $('#sumProgressPercent').textContent = `${value}%`;
+  $('#sumProgressBar').style.width = `${value}%`;
+  $('#sumProgressDetail').textContent = detail;
+}
+
+async function extractSumPdfPages(file, fileIndex) {
+  if (!window.pdfjsLib) throw new Error('A biblioteca de PDF não carregou. Atualize a página com internet ativa.');
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pages = [];
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+    const baseProgress = (fileIndex + (pageNumber - 1) / Math.max(pdf.numPages, 1)) / Math.max(sumState.files.length, 1);
+    updateSumProgress(baseProgress, `${file.name} — página ${pageNumber} de ${pdf.numPages}`);
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    let text = pdfItemsToLines(content.items).join('\n');
+    let method = 'Texto do PDF';
+    const moneyCount = (text.match(new RegExp(SUM_MONEY_PATTERN, 'g')) || []).length;
+    if ((normalize(text).length < 45 || moneyCount === 0) && window.Tesseract) {
+      const viewport = page.getViewport({ scale: 2 });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      const result = await Tesseract.recognize(canvas, 'por', {
+        logger: (event) => {
+          if (event.status === 'recognizing text') updateSumProgress(baseProgress, `${file.name} — OCR da página ${pageNumber}: ${Math.round((event.progress || 0) * 100)}%`);
+        }
+      });
+      if (normalize(result.data.text).length > normalize(text).length) text = result.data.text;
+      method = 'OCR da página';
+    }
+    pages.push({ page: pageNumber, text, method });
+    await yieldBrowser();
+  }
+  return pages;
+}
+
+async function extractSumImage(file, fileIndex) {
+  if (!window.Tesseract) throw new Error('A biblioteca de OCR não carregou. Atualize a página com internet ativa.');
+  const result = await Tesseract.recognize(file, 'por', {
+    logger: (event) => {
+      if (event.status === 'recognizing text') {
+        const overall = (fileIndex + (event.progress || 0)) / Math.max(sumState.files.length, 1);
+        updateSumProgress(overall, `${file.name} — reconhecendo texto: ${Math.round((event.progress || 0) * 100)}%`);
+      }
+    }
+  });
+  return [{ page: 1, text: result.data.text || '', method: 'OCR da imagem' }];
+}
+
+function cleanSumInvoiceNumber(raw) {
+  const value = onlyDigits(raw);
+  if (value.length < 2 || value.length > 15) return '';
+  return value.replace(/^0+(?=\d)/, '');
+}
+
+function sumMoneyCandidates(text) {
+  const regex = new RegExp(SUM_MONEY_PATTERN, 'gi');
+  const values = [];
+  let match;
+  while ((match = regex.exec(text))) {
+    const value = parseLocaleNumber(match[0]);
+    if (value !== null && value >= 0 && value < 1000000000000) values.push({ raw: match[0], value, index: match.index, end: regex.lastIndex });
+  }
+  return values;
+}
+
+function chooseSumValue(context, nfMatchEnd) {
+  const candidates = sumMoneyCandidates(context);
+  if (!candidates.length) return null;
+  const normalized = normalize(context);
+  const labels = ['valor total da nf', 'valor total', 'total da nota', 'valor da nota', 'total nf', 'vlr total', 'valor nf'];
+  let labelIndex = -1;
+  labels.forEach((label) => { labelIndex = Math.max(labelIndex, normalized.lastIndexOf(label)); });
+  if (labelIndex >= 0) {
+    const afterLabel = candidates.find((item) => item.index >= labelIndex);
+    if (afterLabel) return { ...afterLabel, confidence: 'confirmed', reason: 'Valor localizado próximo ao campo de total' };
+  }
+  const afterNf = candidates.filter((item) => item.index >= nfMatchEnd);
+  const pool = afterNf.length ? afterNf : candidates;
+  const selected = pool[pool.length - 1];
+  return { ...selected, confidence: candidates.length === 1 ? 'confirmed' : 'review', reason: candidates.length === 1 ? 'Único valor ligado à nota' : 'A linha possui mais de um valor; confira o total selecionado' };
+}
+
+function inferSumInvoiceNumber(line, firstMoneyIndex) {
+  const beforeMoney = line.slice(0, Math.max(0, firstMoneyIndex));
+  const masked = beforeMoney
+    .replace(/\b\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}\b/g, ' ')
+    .replace(/\b\d{2}[.\s]?\d{3}[.\s]?\d{3}[\/-]?\d{4}-?\d{2}\b/g, ' ')
+    .replace(/\b\d{3}[.\s]?\d{3}[.\s]?\d{3}-?\d{2}\b/g, ' ')
+    .replace(/\b\d{20,}\b/g, ' ');
+  const tokens = [...masked.matchAll(/\b\d{2,15}\b/g)].map((match) => cleanSumInvoiceNumber(match[0])).filter(Boolean);
+  return tokens[tokens.length - 1] || '';
+}
+
+
+function sumExplicitMatches(line) {
+  const regex = new RegExp(SUM_NF_PATTERN, 'gi');
+  return [...String(line || '').matchAll(regex)].filter((match) => {
+    const prefix = normalize(String(line || '').slice(Math.max(0, match.index - 24), match.index));
+    return !/(?:total|valor|vlr|soma)(?:\s+(?:da|de|do))?\s*$/.test(prefix);
+  });
+}
+
+function parseSumPageText(text, fileName, page, method) {
+  const lines = String(text || '').split(/\r?\n/).map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const records = [];
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
+    const normalizedLine = normalize(line);
+    if (/\b(total geral|subtotal geral|soma total|quantidade de notas|qtd.? notas)\b/.test(normalizedLine)) continue;
+
+    const allMatches = sumExplicitMatches(line);
+
+    if (allMatches.length) {
+      allMatches.forEach((nfMatch, matchIndex) => {
+        const nf = cleanSumInvoiceNumber(nfMatch[1]);
+        if (!nf) return;
+        const nextStart = allMatches[matchIndex + 1]?.index ?? line.length;
+        let segment = line.slice(nfMatch.index, nextStart).trim();
+        if (!sumMoneyCandidates(segment).length) {
+          for (let lookAhead = 1; lookAhead <= 2; lookAhead++) {
+            const nextLine = lines[index + lookAhead] || '';
+            if (!nextLine || sumExplicitMatches(nextLine).length) break;
+            segment += ` ${nextLine}`;
+            if (sumMoneyCandidates(segment).length) break;
+          }
+        }
+        const valueInfo = chooseSumValue(segment, nfMatch[0].length);
+        if (!valueInfo) return;
+        records.push({
+          id: `sum-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          nf,
+          value: valueInfo.value,
+          fileName,
+          page,
+          method,
+          include: true,
+          status: valueInfo.confidence,
+          note: valueInfo.reason,
+          raw: segment.slice(0, 260)
+        });
+      });
+      continue;
+    }
+
+    const moneyValues = sumMoneyCandidates(line);
+    if (!moneyValues.length) continue;
+    if (!/\d/.test(line) || normalizedLine.includes('cnpj') || normalizedLine.includes('cpf')) continue;
+    const nf = inferSumInvoiceNumber(line, moneyValues[0].index);
+    if (!nf) continue;
+    const valueInfo = chooseSumValue(line, 0);
+    if (!valueInfo) continue;
+    records.push({
+      id: `sum-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      nf,
+      value: valueInfo.value,
+      fileName,
+      page,
+      method,
+      include: true,
+      status: 'review',
+      note: 'NF inferida pela posição na linha; confirme número e valor',
+      raw: line.slice(0, 260)
+    });
+  }
+  return records;
+}
+
+function finalizeSumRecords(records) {
+  const exactSeen = new Set();
+  const unique = [];
+  records.forEach((record) => {
+    const exactKey = `${record.fileName}|${record.page}|${record.nf}|${Number(record.value).toFixed(2)}`;
+    if (exactSeen.has(exactKey)) return;
+    exactSeen.add(exactKey);
+    unique.push(record);
+  });
+  const byNf = new Map();
+  unique.forEach((record) => {
+    if (!byNf.has(record.nf)) byNf.set(record.nf, []);
+    byNf.get(record.nf).push(record);
+  });
+  byNf.forEach((group) => {
+    if (group.length <= 1) return;
+    group.forEach((record, index) => {
+      record.status = 'review';
+      record.note = index === 0 ? 'Esta NF apareceu mais de uma vez; confira as linhas repetidas' : 'Possível duplicidade: linha desmarcada automaticamente';
+      if (index > 0) record.include = false;
+    });
+  });
+  return unique.sort((a, b) => Number(a.nf) - Number(b.nf) || a.fileName.localeCompare(b.fileName));
+}
+
+function renderSumResults() {
+  $('#sumResultSubtitle').textContent = `${sumState.records.length} linha(s) identificada(s) em ${sumState.files.length} arquivo(s). Revise as marcações antes de usar o total.`;
+  renderSumWarnings();
+  renderSumTable();
+  $('#sumResults').classList.remove('hidden');
+  $('#sumResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function sumFilteredRecords() {
+  return sumState.records.filter((record) => {
+    const filterOk = sumState.filter === 'all'
+      || (sumState.filter === 'included' && record.include)
+      || (sumState.filter === 'excluded' && !record.include)
+      || (sumState.filter === 'review' && record.status === 'review');
+    const searchable = normalize([record.nf, record.fileName, record.raw, record.note].join(' '));
+    return filterOk && (!sumState.search || searchable.includes(sumState.search));
+  });
+}
+
+function renderSumTable() {
+  const tbody = $('#sumResultsBody');
+  tbody.innerHTML = '';
+  sumFilteredRecords().forEach((record) => {
+    const tr = document.createElement('tr');
+    tr.className = record.include ? '' : 'sum-row-excluded';
+    const statusLabel = record.status === 'confirmed' ? 'Reconhecida' : record.status === 'manual' ? 'Manual' : 'Revisar';
+    const statusClass = record.status === 'confirmed' ? 'status-ok' : record.status === 'manual' ? 'status-duplicate' : 'status-divergent';
+    tr.innerHTML = `<td><label class="sum-check"><input type="checkbox" data-sum-action="include" data-id="${escapeHtml(record.id)}" ${record.include ? 'checked' : ''}><span>Somar</span></label></td><td><span class="status-badge ${statusClass}" title="${escapeHtml(record.note)}">${statusLabel}</span><small class="sum-method">${escapeHtml(record.method)}</small></td><td><input class="sum-edit sum-nf-input" data-sum-action="nf" data-id="${escapeHtml(record.id)}" value="${escapeHtml(record.nf)}" inputmode="numeric" aria-label="Número da NF"></td><td class="align-right"><input class="sum-edit sum-value-input" data-sum-action="value" data-id="${escapeHtml(record.id)}" value="${escapeHtml(formatSumInputValue(record.value))}" inputmode="decimal" aria-label="Valor total da NF"></td><td><span class="file-name" title="${escapeHtml(record.fileName)}">${escapeHtml(record.fileName)}</span><small class="sum-method">Página ${escapeHtml(record.page)}</small></td><td><span class="sum-raw" title="${escapeHtml(record.raw)}">${escapeHtml(record.raw)}</span></td><td><button class="sum-delete" data-sum-action="delete" data-id="${escapeHtml(record.id)}" type="button" title="Excluir linha">×</button></td>`;
+    tbody.appendChild(tr);
+  });
+  const visible = sumFilteredRecords().length;
+  $('#sumEmptyResults').classList.toggle('hidden', visible > 0);
+  tbody.parentElement.classList.toggle('hidden', visible === 0);
+  updateSumSummary();
+}
+
+function formatSumInputValue(value) {
+  return Number.isFinite(Number(value)) ? Number(value).toFixed(2).replace('.', ',') : '';
+}
+
+function updateSumSummary() {
+  const included = sumState.records.filter((record) => record.include && Number.isFinite(Number(record.value)));
+  const total = included.reduce((sum, record) => sum + Number(record.value), 0);
+  const review = sumState.records.filter((record) => record.status === 'review').length;
+  $('#sumPagesCount').textContent = sumState.pages || sumState.files.length;
+  $('#sumFilesCountText').textContent = `${sumState.files.length} arquivo(s)`;
+  $('#sumNotesCount').textContent = included.length;
+  $('#sumReviewCount').textContent = review;
+  $('#sumGrandTotal').textContent = money.format(total);
+}
+
+function renderSumWarnings() {
+  const box = $('#sumWarnings');
+  const warnings = [...sumState.warnings];
+  if (sumState.records.some((record) => record.status === 'review')) warnings.push('Existem linhas marcadas como “Revisar”. Confira o número e o valor antes de usar o total.');
+  $('#sumWarningsList').innerHTML = [...new Set(warnings)].map((warning) => `<li>${escapeHtml(warning)}</li>`).join('');
+  box.classList.toggle('hidden', warnings.length === 0);
+}
+
+function handleSumTableChange(event) {
+  const action = event.target.dataset.sumAction;
+  const id = event.target.dataset.id;
+  if (!action || !id) return;
+  const record = sumState.records.find((item) => item.id === id);
+  if (!record) return;
+  if (action === 'include') record.include = event.target.checked;
+  if (action === 'nf') {
+    record.nf = cleanSumInvoiceNumber(event.target.value) || event.target.value.trim();
+    record.status = record.status === 'manual' ? 'manual' : 'review';
+    record.note = 'Número alterado manualmente';
+  }
+  if (action === 'value') {
+    const value = parseLocaleNumber(event.target.value);
+    if (value === null) return showToast('Digite um valor válido, por exemplo 1.250,90.', true);
+    record.value = value;
+    record.status = record.status === 'manual' ? 'manual' : 'review';
+    record.note = 'Valor alterado manualmente';
+  }
+  renderSumTable();
+  renderSumWarnings();
+}
+
+function handleSumTableClick(event) {
+  const button = event.target.closest('[data-sum-action="delete"]');
+  if (!button) return;
+  sumState.records = sumState.records.filter((record) => record.id !== button.dataset.id);
+  renderSumTable();
+  renderSumWarnings();
+}
+
+function addManualSumRecord() {
+  const record = {
+    id: `sum-manual-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    nf: '',
+    value: 0,
+    fileName: 'Adicionado manualmente',
+    page: '—',
+    method: 'Digitação manual',
+    include: true,
+    status: 'manual',
+    note: 'Linha adicionada manualmente',
+    raw: 'Preencha o número da NF e o valor total'
+  };
+  sumState.records.unshift(record);
+  $('#sumResults').classList.remove('hidden');
+  renderSumTable();
+  setTimeout(() => $('#sumResultsBody .sum-nf-input')?.focus(), 0);
+}
+
+function exportSumCsv() {
+  const records = sumState.records.filter((record) => record.include && Number.isFinite(Number(record.value)));
+  if (!records.length) return showToast('Nenhuma NF está marcada para entrar na soma.', true);
+  const total = records.reduce((sum, record) => sum + Number(record.value), 0);
+  const rows = [['Número da NF', 'Valor total', 'Arquivo', 'Página', 'Forma de leitura', 'Situação', 'Observação', 'Trecho reconhecido']];
+  records.forEach((record) => rows.push([record.nf, Number(record.value).toFixed(2).replace('.', ','), record.fileName, record.page, record.method, record.status === 'confirmed' ? 'Reconhecida' : record.status === 'manual' ? 'Manual' : 'Revisar', record.note, record.raw]));
+  rows.push([]);
+  rows.push(['TOTAL DAS NFs', total.toFixed(2).replace('.', ',')]);
+  downloadCsv(`conferinho-soma-nfs-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+}
+
+function resetSum() {
+  sumState.files = [];
+  sumState.records = [];
+  sumState.warnings = [];
+  sumState.pages = 0;
+  sumState.filter = 'all';
+  sumState.search = '';
+  $('#sumInput').value = '';
+  $('#sumFileList').innerHTML = '';
+  $('#sumSearchInput').value = '';
+  $('#sumAnalyzeBtn').disabled = true;
+  $('#sumProgress').classList.add('hidden');
+  $('#sumResults').classList.add('hidden');
+  $('#sumQueueText').innerHTML = '<strong>Nenhum arquivo selecionado</strong><span>Use imagens nítidas e sem cortes para melhorar a leitura.</span>';
+  showToast('Somador de NFs limpo.');
+}
+
