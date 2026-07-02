@@ -1,14 +1,21 @@
-CONFERINHO — ATUALIZAÇÃO COM SOMADOR DE NFs
+CONFERINHO — ATUALIZAÇÃO: COLAR VÁRIOS PRINTS COM CTRL + V
 
-O que foi acrescentado:
-- Novo módulo “Somador de NFs”.
-- Upload de prints em PNG, JPG ou WEBP.
-- Upload de PDFs com texto ou páginas digitalizadas.
-- OCR para reconhecer número e valor total das notas.
-- Soma automática somente das linhas marcadas.
-- Edição manual do número e do valor.
-- Detecção de possíveis duplicidades.
-- Exportação em CSV e impressão/salvamento em PDF.
+O que foi acrescentado no módulo “Somador de NFs”:
+- Cole prints diretamente com Ctrl + V, como em um chat.
+- Cole um print depois do outro; todos permanecem na mesma fila.
+- Miniatura de cada print para conferência antes da leitura.
+- Remoção individual de qualquer print.
+- Botão para limpar toda a fila.
+- Seleção e arraste de vários prints ou PDFs continuam funcionando.
+- Ao selecionar ou arrastar novos arquivos, eles são acrescentados sem apagar os anteriores.
+- Depois, o Conferinho usa OCR, identifica NF + valor, soma e monta o relatório revisável.
+
+COMO USAR
+1. Abra o módulo “Somador de NFs”.
+2. Tire ou copie um print.
+3. Volte para a página e pressione Ctrl + V.
+4. Repita o processo para acrescentar quantos prints precisar.
+5. Confira as miniaturas e clique em “Ler e somar NFs”.
 
 COMO ATUALIZAR NO GITHUB
 1. Extraia este ZIP.
@@ -16,7 +23,9 @@ COMO ATUALIZAR NO GITHUB
 3. Envie/substitua index.html, styles.css e app.js na raiz.
 4. Não apague a pasta assets do seu repositório.
 5. Clique em Commit changes.
-6. Aguarde a Vercel publicar.
+6. Aguarde a Vercel publicar a nova versão.
 
 IMPORTANTE
-O OCR depende da nitidez do print. Por isso o relatório permite revisar, editar, desmarcar e adicionar linhas antes de usar o total.
+- O Ctrl + V funciona quando o módulo Somador de NFs está aberto e a página está em foco.
+- O OCR depende da nitidez do print. Por isso o relatório permite revisar, editar, desmarcar e adicionar linhas antes de usar o total.
+- Os documentos continuam sendo processados localmente no navegador.

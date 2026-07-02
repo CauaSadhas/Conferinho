@@ -23,10 +23,10 @@ const moduleCopy = {
     mascot: "Pode mandar os XMLs que eu separo as retenções."
   },
   sum: {
-    title: 'Mande um print e o <span>Conferinho</span> soma as NFs.',
-    text: "Envie imagens ou PDFs. Eu identifico cada número de nota, encontro seu valor total e preparo um relatório para conferência.",
-    benefits: ["Print ou PDF", "Leitura por OCR", "Total e relatório revisável"],
-    mascot: "Pode mandar o documento que eu leio e somo as notas."
+    title: 'Cole seus prints e o <span>Conferinho</span> soma as NFs.',
+    text: "Copie um print e pressione Ctrl + V. Você pode colar vários, misturar com PDFs e depois gerar um relatório com o total.",
+    benefits: ["Cole com Ctrl + V", "Vários prints na mesma fila", "Total e relatório revisável"],
+    mascot: "Pode colar os prints um por um que eu junto tudo na mesma conferência."
   }
 };
 
@@ -604,17 +604,143 @@ const SUM_ACCEPTED_FILE = /\.(pdf|png|jpe?g|webp)$/i;
 const SUM_MONEY_PATTERN = String.raw`(?:R\$\s*)?(?:\d{1,3}(?:[.\s]\d{3})+|\d+)[,.]\d{2}`;
 const SUM_NF_PATTERN = String.raw`(?:\bNF(?:-?E|S-?E)?\b|\bNFS(?:-?E)?\b|\bNOTA(?:\s+FISCAL)?\b|\bN[ÚU]MERO\s+(?:DA\s+)?NOTA\b)\s*(?:N[º°O.]?\s*)?[:#-]?\s*([0-9][0-9.\/-]{1,18})`;
 
-bindDropzone($('#sumDropzone'), $('#sumInput'), (file) => SUM_ACCEPTED_FILE.test(file.name), setSumFiles);
+let sumPasteCounter = 0;
 
-function setSumFiles(files) {
-  sumState.files = files;
-  $('#sumAnalyzeBtn').disabled = !files.length;
-  $('#sumFileList').innerHTML = files.map((file) => `<span class="file-chip" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>`).join('');
-  $('#sumQueueText').innerHTML = files.length
-    ? `<strong>${files.length} arquivo(s) pronto(s)</strong><span>O Conferinho vai ler as páginas e procurar NF + valor total.</span>`
-    : '<strong>Nenhum arquivo selecionado</strong><span>Use imagens nítidas e sem cortes para melhorar a leitura.</span>';
+bindDropzone($('#sumDropzone'), $('#sumInput'), (file) => SUM_ACCEPTED_FILE.test(file.name), (files) => addSumFiles(files, 'seleção'));
+
+function sumFileFingerprint(file) {
+  return [file.name, file.size, file.lastModified, file.type].join('|');
 }
 
+function formatFileSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return 'Tamanho não informado';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1).replace('.', ',')} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
+}
+
+function invalidateSumReading() {
+  sumState.records = [];
+  sumState.warnings = [];
+  sumState.pages = 0;
+  $('#sumProgress').classList.add('hidden');
+  $('#sumResults').classList.add('hidden');
+}
+
+function addSumFiles(files, source = 'seleção') {
+  const accepted = [...files].filter((file) => SUM_ACCEPTED_FILE.test(file.name) || file.type.startsWith('image/') || file.type === 'application/pdf');
+  if (!accepted.length) return showToast('Não encontrei imagem ou PDF para adicionar.', true);
+
+  const existing = new Set(sumState.files.map(sumFileFingerprint));
+  const fresh = accepted.filter((file) => !existing.has(sumFileFingerprint(file)));
+  if (!fresh.length) return showToast('Esse arquivo já está na lista.', true);
+
+  sumState.files.push(...fresh);
+  $('#sumInput').value = '';
+  invalidateSumReading();
+  renderSumQueue();
+  showToast(`${fresh.length} ${fresh.length === 1 ? 'arquivo adicionado' : 'arquivos adicionados'} por ${source}.`);
+}
+
+function renderSumQueue() {
+  const files = sumState.files;
+  const list = $('#sumFileList');
+  list.innerHTML = '';
+
+  files.forEach((file, index) => {
+    const card = document.createElement('article');
+    card.className = 'sum-preview-card';
+    card.innerHTML = `<span class="sum-preview-number">${index + 1}</span><button class="sum-preview-remove" type="button" data-sum-file-remove="${index}" aria-label="Remover ${escapeHtml(file.name)}" title="Remover arquivo">×</button><div class="sum-preview-media"></div><div class="sum-preview-info"><strong title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</strong><span>${escapeHtml(formatFileSize(file.size))}</span></div>`;
+    const media = $('.sum-preview-media', card);
+    if (file.type.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(file.name)) {
+      const image = document.createElement('img');
+      const objectUrl = URL.createObjectURL(file);
+      image.src = objectUrl;
+      image.alt = `Prévia de ${file.name}`;
+      image.addEventListener('load', () => URL.revokeObjectURL(objectUrl), { once: true });
+      image.addEventListener('error', () => URL.revokeObjectURL(objectUrl), { once: true });
+      media.appendChild(image);
+    } else {
+      media.innerHTML = '<span class="sum-preview-pdf">PDF</span>';
+    }
+    list.appendChild(card);
+  });
+
+  $('#sumAnalyzeBtn').disabled = !files.length;
+  $('#sumClearFilesBtn').classList.toggle('hidden', !files.length);
+  $('#sumQueueText').innerHTML = files.length
+    ? `<strong>${files.length} ${files.length === 1 ? 'arquivo pronto' : 'arquivos prontos'}</strong><span>Você pode continuar colando mais prints com Ctrl + V antes de iniciar a leitura.</span>`
+    : '<strong>Nenhum arquivo selecionado</strong><span>Copie um print, volte para esta tela e pressione Ctrl + V.</span>';
+}
+
+function removeSumFile(index) {
+  if (!Number.isInteger(index) || index < 0 || index >= sumState.files.length) return;
+  sumState.files.splice(index, 1);
+  invalidateSumReading();
+  renderSumQueue();
+  showToast('Arquivo removido da fila.');
+}
+
+function clearSumFiles() {
+  sumState.files = [];
+  $('#sumInput').value = '';
+  invalidateSumReading();
+  renderSumQueue();
+  showToast('Arquivos removidos da fila.');
+}
+
+function isEditablePasteTarget(target) {
+  return target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable);
+}
+
+function clipboardImageFiles(event) {
+  const items = [...(event.clipboardData?.items || [])];
+  return items
+    .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+    .map((item, index) => {
+      const blob = item.getAsFile();
+      if (!blob) return null;
+      const subtype = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+      sumPasteCounter += 1;
+      return new File([blob], `print-colado-${String(sumPasteCounter).padStart(2, '0')}.${subtype}`, {
+        type: blob.type || 'image/png',
+        lastModified: Date.now() + index
+      });
+    })
+    .filter(Boolean);
+}
+
+function handleSumPaste(event) {
+  const activeModule = $('.module-button.active')?.dataset.module;
+  if (activeModule !== 'sum' || isEditablePasteTarget(event.target)) return;
+  const files = clipboardImageFiles(event);
+  if (!files.length) return;
+  event.preventDefault();
+  addSumFiles(files, 'Ctrl + V');
+  const dropzone = $('#sumDropzone');
+  dropzone.classList.remove('paste-ready');
+  dropzone.classList.add('paste-success');
+  setTimeout(() => dropzone.classList.remove('paste-success'), 700);
+}
+
+document.addEventListener('paste', handleSumPaste);
+document.addEventListener('keydown', (event) => {
+  if ($('.module-button.active')?.dataset.module !== 'sum' || isEditablePasteTarget(event.target)) return;
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'v') $('#sumDropzone').classList.add('paste-ready');
+});
+document.addEventListener('keyup', () => $('#sumDropzone').classList.remove('paste-ready'));
+window.addEventListener('blur', () => $('#sumDropzone').classList.remove('paste-ready'));
+
+$('#sumDropzone').addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  $('#sumInput').click();
+});
+$('#sumFileList').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-sum-file-remove]');
+  if (button) removeSumFile(Number(button.dataset.sumFileRemove));
+});
+$('#sumClearFilesBtn').addEventListener('click', clearSumFiles);
 $('#sumAnalyzeBtn').addEventListener('click', analyzeSumFiles);
 $('#sumSearchInput').addEventListener('input', (event) => { sumState.search = normalize(event.target.value); renderSumTable(); });
 $$('[data-sum-filter]').forEach((button) => button.addEventListener('click', () => {
@@ -627,6 +753,8 @@ $('#sumPrintBtn').addEventListener('click', () => window.print());
 $('#sumAddBtn').addEventListener('click', addManualSumRecord);
 $('#sumResultsBody').addEventListener('change', handleSumTableChange);
 $('#sumResultsBody').addEventListener('click', handleSumTableClick);
+
+renderSumQueue();
 
 async function analyzeSumFiles() {
   if (!sumState.files.length) return;
@@ -989,12 +1117,10 @@ function resetSum() {
   sumState.filter = 'all';
   sumState.search = '';
   $('#sumInput').value = '';
-  $('#sumFileList').innerHTML = '';
   $('#sumSearchInput').value = '';
-  $('#sumAnalyzeBtn').disabled = true;
   $('#sumProgress').classList.add('hidden');
   $('#sumResults').classList.add('hidden');
-  $('#sumQueueText').innerHTML = '<strong>Nenhum arquivo selecionado</strong><span>Use imagens nítidas e sem cortes para melhorar a leitura.</span>';
+  renderSumQueue();
   showToast('Somador de NFs limpo.');
 }
 

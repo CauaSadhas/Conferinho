@@ -90,11 +90,21 @@
 
 
     <section id="sumModule" class="module-section hidden">
-      <div class="flow-intro"><span class="flow-kicker">SOMADOR DE NOTAS</span><h2>Envie um print ou PDF e receba o total das NFs.</h2><p>O Conferinho lê as notas, encontra o valor total de cada NF e monta um relatório revisável.</p></div>
-      <section class="panel nfse-upload-panel">
-        <label class="dropzone sum-dropzone" id="sumDropzone" for="sumInput"><input id="sumInput" type="file" accept="application/pdf,.pdf,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" multiple /><span class="drop-icon">Σ</span><strong>Arraste seus prints ou PDFs aqui</strong><span>ou clique para selecionar um ou vários arquivos</span><em>PDF, PNG, JPG ou WEBP — leitura local com OCR</em></label>
-        <div class="nfse-upload-footer"><div id="sumQueueText"><strong>Nenhum arquivo selecionado</strong><span>Use imagens nítidas e sem cortes para melhorar a leitura.</span></div><button class="button button-primary" id="sumAnalyzeBtn" disabled>Σ Ler e somar NFs</button></div>
-        <div class="file-list" id="sumFileList"></div>
+      <div class="flow-intro"><span class="flow-kicker">SOMADOR DE NOTAS</span><h2>Cole um ou vários prints e receba o total das NFs.</h2><p>Pressione Ctrl + V quantas vezes precisar. O Conferinho junta os prints, lê as notas e monta um relatório revisável.</p></div>
+      <section class="panel nfse-upload-panel" id="sumUploadPanel">
+        <label class="dropzone sum-dropzone" id="sumDropzone" for="sumInput" tabindex="0" aria-label="Cole prints com Control V, arraste arquivos ou clique para selecionar">
+          <input id="sumInput" type="file" accept="application/pdf,.pdf,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" multiple />
+          <span class="drop-icon sum-paste-icon">Ctrl+V</span>
+          <strong>Cole um print aqui com Ctrl + V</strong>
+          <span>Também pode arrastar ou clicar para selecionar vários prints e PDFs</span>
+          <div class="paste-shortcut" aria-hidden="true"><kbd>Ctrl</kbd><b>+</b><kbd>V</kbd><small>Você pode colar um print depois do outro</small></div>
+          <em>PDF, PNG, JPG ou WEBP — leitura local com OCR</em>
+        </label>
+        <div class="nfse-upload-footer sum-upload-footer">
+          <div id="sumQueueText"><strong>Nenhum arquivo selecionado</strong><span>Copie um print, volte para esta tela e pressione Ctrl + V.</span></div>
+          <div class="sum-upload-actions"><button class="button button-ghost button-small hidden" id="sumClearFilesBtn" type="button">Limpar arquivos</button><button class="button button-primary" id="sumAnalyzeBtn" disabled>Σ Ler e somar NFs</button></div>
+        </div>
+        <div class="sum-preview-grid" id="sumFileList" aria-live="polite"></div>
       </section>
       <section id="sumProgress" class="panel progress-panel hidden" aria-live="polite"><div class="progress-avatar">OCR</div><div class="progress-content"><div class="progress-head"><strong id="sumProgressTitle">Lendo documentos...</strong><span id="sumProgressPercent">0%</span></div><div class="progress-track"><div id="sumProgressBar" class="progress-bar"></div></div><p id="sumProgressDetail">Preparando arquivos</p></div></section>
       <section id="sumResults" class="results-section hidden">

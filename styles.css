@@ -22,3 +22,31 @@ table.sum-table{min-width:1120px}
 @media(max-width:760px){table.sum-table{min-width:980px}.sum-total-card strong{font-size:20px}}
 @media print{#sumModule .nfse-upload-panel,#sumModule .sum-help,#sumModule .warning-box,#sumModule .sum-delete{display:none!important}#sumModule .sum-edit{padding:0;border:0;background:transparent;box-shadow:none}.sum-check span{display:none}.sum-row-excluded{display:none}.sum-raw{white-space:normal;max-width:none}}
 
+
+/* Colar vários prints com Ctrl + V */
+.sum-dropzone{position:relative;outline:none;cursor:pointer}
+.sum-dropzone:focus-visible{border-color:var(--blue);box-shadow:0 0 0 4px rgba(15,92,168,.11)}
+.sum-dropzone.paste-ready{border-color:var(--blue);background:linear-gradient(180deg,#eef8ff,#f8fcff);box-shadow:inset 0 0 0 1px rgba(15,92,168,.08)}
+.sum-dropzone.paste-success{border-color:var(--green);background:linear-gradient(180deg,#effbf6,#f9fefc);animation:sumPastePulse .55s ease}
+.sum-paste-icon{width:auto;min-width:76px;padding:0 12px;font-size:11px;letter-spacing:.02em}
+.paste-shortcut{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;color:#6d8295}
+.paste-shortcut kbd{min-width:39px;padding:6px 9px;border:1px solid #cbd9e5;border-bottom-width:3px;border-radius:8px;background:#fff;color:var(--navy);font-family:inherit;font-size:11px;font-weight:900;box-shadow:0 3px 8px rgba(13,39,66,.06)}
+.paste-shortcut b{color:#8da0b0;font-size:12px}
+.paste-shortcut small{margin-left:6px;color:var(--blue);font-size:10px;font-weight:800}
+.sum-upload-footer{flex-wrap:wrap}
+.sum-upload-actions{display:flex;align-items:center;gap:8px}
+.button-small{padding:9px 12px;font-size:11px}
+.sum-preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px;margin-top:14px}
+.sum-preview-card{position:relative;min-width:0;overflow:hidden;border:1px solid var(--border);border-radius:14px;background:#fff;box-shadow:0 8px 20px rgba(13,39,66,.055)}
+.sum-preview-media{height:116px;display:grid;place-items:center;overflow:hidden;background:linear-gradient(145deg,#edf5fb,#f8fbfd)}
+.sum-preview-media img{width:100%;height:100%;object-fit:cover;display:block}
+.sum-preview-pdf{display:grid;place-items:center;width:58px;height:68px;border-radius:10px;background:#fff;color:var(--red);font-size:13px;font-weight:900;box-shadow:0 8px 18px rgba(13,39,66,.09)}
+.sum-preview-info{min-width:0;padding:10px 11px 11px}
+.sum-preview-info strong{display:block;overflow:hidden;color:var(--navy);font-size:10px;text-overflow:ellipsis;white-space:nowrap}
+.sum-preview-info span{display:block;margin-top:4px;color:var(--muted);font-size:9px}
+.sum-preview-remove{position:absolute;top:7px;right:7px;width:27px;height:27px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.9);border-radius:9px;background:rgba(13,39,66,.82);color:#fff;font-size:16px;line-height:1;box-shadow:0 5px 14px rgba(13,39,66,.2)}
+.sum-preview-number{position:absolute;top:8px;left:8px;min-width:24px;height:24px;display:grid;place-items:center;padding:0 7px;border-radius:999px;background:rgba(255,255,255,.92);color:var(--blue);font-size:9px;font-weight:900;box-shadow:0 4px 12px rgba(13,39,66,.12)}
+@keyframes sumPastePulse{0%{transform:scale(1)}45%{transform:scale(1.008)}100%{transform:scale(1)}}
+@media(max-width:760px){.paste-shortcut small{display:none}.sum-upload-actions{width:100%}.sum-upload-actions .button{flex:1}.sum-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sum-preview-media{height:105px}}
+@media(max-width:460px){.sum-preview-grid{grid-template-columns:1fr}.sum-preview-media{height:150px}}
+@media print{.sum-preview-grid{display:none!important}}
