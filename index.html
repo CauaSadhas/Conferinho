@@ -28,7 +28,7 @@
       <div class="hero-copy">
         <span class="eyebrow"><span class="eyebrow-dot"></span> SEU ASSISTENTE DE CONFERÊNCIA</span>
         <h1 id="heroTitle">Deixe que o <span>Conferinho</span> encontre as diferenças para você.</h1>
-        <p id="heroText">Envie dois relatórios, de qualquer origem. O Conferinho organiza os dados e mostra o que está igual, diferente ou ausente.</p>
+        <p id="heroText">Envie dois relatórios, mesmo que as notas estejam embaralhadas. O Conferinho pega cada número de NF, procura no outro relatório e confere o valor.</p>
         <div class="hero-benefits" id="heroBenefits">
           <span><b>✓</b> Vários arquivos de cada lado</span><span><b>✓</b> Leitura automática</span><span><b>✓</b> Resultado exportável</span>
         </div>
@@ -44,7 +44,7 @@
     </section>
 
     <section id="pdfModule" class="module-section">
-      <div class="flow-intro"><span class="flow-kicker">COMPARADOR</span><h2>Dois grupos de relatórios. Uma comparação automática.</h2><p>Envie um ou vários PDFs em cada lado.</p></div>
+      <div class="flow-intro"><span class="flow-kicker">COMPARADOR</span><h2>Cada NF é procurada no outro relatório, independentemente da posição.</h2><p>O Conferinho identifica o número da nota e o valor em cada lado, mesmo quando a ordem está diferente.</p></div>
       <section class="upload-grid">
         <article class="panel upload-panel">
           <div class="panel-heading"><div class="step-number">1</div><div><span class="panel-kicker">PRIMEIRO LADO</span><h2>Relatório 1</h2><p>Arquivo usado como referência.</p></div><span class="multi-badge">1 ou vários PDFs</span></div>
@@ -59,7 +59,7 @@
         </article>
       </section>
       <section class="panel action-panel">
-        <div><span class="panel-kicker">COMPARAÇÃO INTELIGENTE</span><h2>O Conferinho escolhe a melhor forma de ler</h2><p id="pdfStatusHint">Estou esperando pelo menos um PDF em cada campo.</p></div>
+        <div><span class="panel-kicker">COMPARAÇÃO POR NOTA</span><h2>Ele pega a NF, procura no outro relatório e confere o valor</h2><p id="pdfStatusHint">Estou esperando pelo menos um PDF em cada campo.</p></div>
         <button class="button button-primary button-large" id="compareBtn" type="button" disabled>✓ Comparar relatórios</button>
       </section>
       <section id="pdfProgress" class="panel progress-panel hidden" aria-live="polite"><div class="progress-avatar">🤖</div><div class="progress-content"><div class="progress-head"><strong id="pdfProgressTitle">Lendo relatórios...</strong><span id="pdfProgressPercent">0%</span></div><div class="progress-track"><div id="pdfProgressBar" class="progress-bar"></div></div><p id="pdfProgressDetail">Preparando arquivos</p></div></section>
@@ -67,7 +67,7 @@
         <div class="results-header"><div><span class="eyebrow"><span class="eyebrow-dot"></span> CONFERÊNCIA CONCLUÍDA</span><h2>Prontinho! Veja o que eu encontrei.</h2><p id="pdfResultSubtitle"></p></div><div class="results-actions"><button class="button button-ghost" id="pdfExportBtn">Exportar CSV</button><button class="button button-secondary" id="pdfPrintBtn">Imprimir relatório</button></div></div>
         <div class="summary-grid five"><button class="summary-card active" data-pdf-filter="all"><span>Registros</span><strong id="pdfTotalCount">0</strong><small>analisados</small></button><button class="summary-card success" data-pdf-filter="ok"><span>Conferidos</span><strong id="pdfOkCount">0</strong><small>sem diferença</small></button><button class="summary-card warning" data-pdf-filter="divergent"><span>Divergentes</span><strong id="pdfDivergentCount">0</strong><small>precisam revisar</small></button><button class="summary-card danger" data-pdf-filter="missing"><span>Não localizados</span><strong id="pdfMissingCount">0</strong><small>em um dos lados</small></button><button class="summary-card purple" data-pdf-filter="duplicate"><span>Duplicados</span><strong id="pdfDuplicateCount">0</strong><small>possíveis repetições</small></button></div>
         <div class="panel validation-panel" id="pdfValidationPanel"></div>
-        <div class="panel table-panel"><div class="table-toolbar"><div class="filter-tabs"><button class="filter-tab active" data-pdf-filter="all">Todos</button><button class="filter-tab" data-pdf-filter="missing-b">Só no Relatório 1</button><button class="filter-tab" data-pdf-filter="missing-a">Só no Relatório 2</button><button class="filter-tab" data-pdf-filter="divergent">Divergentes</button><button class="filter-tab" data-pdf-filter="ok">Conferidos</button></div><label class="search-box">⌕<input id="pdfSearchInput" placeholder="Buscar identificador ou descrição" /></label></div><div class="table-wrap"><table><thead><tr><th>Situação</th><th>Identificador</th><th>Descrição</th><th>Data Rel. 1</th><th>Data Rel. 2</th><th class="align-right">Valor Rel. 1</th><th class="align-right">Valor Rel. 2</th><th>Arquivos</th></tr></thead><tbody id="pdfResultsBody"></tbody></table><div id="pdfEmptyResults" class="empty-results hidden"><div>⌕</div><strong>Nenhum item encontrado</strong><span>Altere o filtro ou o termo de busca.</span></div></div></div>
+        <div class="panel table-panel"><div class="table-toolbar"><div class="filter-tabs"><button class="filter-tab active" data-pdf-filter="all">Todos</button><button class="filter-tab" data-pdf-filter="missing-b">Só no Relatório 1</button><button class="filter-tab" data-pdf-filter="missing-a">Só no Relatório 2</button><button class="filter-tab" data-pdf-filter="divergent">Divergentes</button><button class="filter-tab" data-pdf-filter="ok">Conferidos</button><button class="filter-tab" data-pdf-filter="duplicate">Notas repetidas</button></div><label class="search-box">⌕<input id="pdfSearchInput" placeholder="Buscar número da nota ou fornecedor" /></label></div><div class="table-wrap"><table><thead><tr><th>Situação</th><th>Número da nota</th><th>Resultado / fornecedor</th><th>Data Rel. 1</th><th>Data Rel. 2</th><th class="align-right">Valor Rel. 1</th><th class="align-right">Valor Rel. 2</th><th>Arquivos</th></tr></thead><tbody id="pdfResultsBody"></tbody></table><div id="pdfEmptyResults" class="empty-results hidden"><div>⌕</div><strong>Nenhum item encontrado</strong><span>Altere o filtro ou o termo de busca.</span></div></div></div>
       </section>
     </section>
 

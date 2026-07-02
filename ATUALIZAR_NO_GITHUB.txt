@@ -29,3 +29,22 @@ O QUE FOI ACRESCENTADO:
 
 IMPORTANTE:
 A leitura reconhece campos comuns dos padrões ABRASF e NFS-e Nacional. Prefeituras podem usar nomes de campos próprios; nesses casos, basta enviar um XML de exemplo para mapear o layout adicional.
+
+
+ATUALIZAÇÃO DA COMPARAÇÃO DE PDF
+- A ordem das notas nos relatórios não interfere mais.
+- A comparação é feita pelo número da nota.
+- Encontrou o mesmo número e o mesmo valor: Conferido.
+- Encontrou o mesmo número com valor diferente: Valor divergente.
+- Não encontrou o número no outro relatório: Não localizado.
+- O leitor possui tratamento específico para relatório SEFAZ/MS, Acompanhamento de Entradas e Livro Caixa.
+
+ATUALIZAÇÃO — REGRA EXATA NF + VALOR
+- Exemplo: encontrou a NF 3249028 no Relatório 1.
+- O Conferinho identifica o valor ligado a essa NF.
+- Depois procura a NF 3249028 em qualquer posição do Relatório 2.
+- Mesmo número + mesmo valor: CONFERIDO.
+- Mesmo número + valor diferente: DIVERGENTE, mostrando os dois valores.
+- Número não encontrado: AUSENTE, informando em qual relatório a NF não está.
+- A ordem, página ou posição da nota não interfere na comparação.
+- Foram adicionados tratamentos para expressões como NF, NF-e, NFS-e, Nota Fiscal, Número da Nota, Valor da Nota, Valor Contábil, Valor Total e Total NF.
