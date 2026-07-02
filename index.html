@@ -28,10 +28,10 @@
     <section class="hero">
       <div class="hero-copy">
         <span class="eyebrow"><span class="eyebrow-dot"></span> SEU ASSISTENTE DE CONFERÊNCIA</span>
-        <h1 id="heroTitle">Deixe que o <span>Conferinho</span> encontre as diferenças para você.</h1>
-        <p id="heroText">Envie dois relatórios, mesmo que as notas estejam embaralhadas. O Conferinho pega cada número de NF, procura no outro relatório e confere o valor.</p>
+        <h1 id="heroTitle">O <span>Conferinho</span> mostra a diferença e o que fazer depois.</h1>
+        <p id="heroText">Envie dois relatórios. O Conferinho cruza cada NF, calcula o impacto financeiro e entrega um plano de ação por prioridade.</p>
         <div class="hero-benefits" id="heroBenefits">
-          <span><b>✓</b> Vários arquivos de cada lado</span><span><b>✓</b> Leitura automática</span><span><b>✓</b> Resultado exportável</span>
+          <span><b>✓</b> Comparação por número da NF</span><span><b>✓</b> Impacto financeiro</span><span><b>✓</b> Plano de ação exportável</span>
         </div>
       </div>
       <div class="hero-visual" aria-label="Mascote Conferinho">
@@ -40,7 +40,7 @@
           <img src="assets/mascote-conferinho.jpg" alt="Mascote Conferinho" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
           <div class="mascot-fallback" hidden>🤖</div>
         </div>
-        <div class="mascot-message"><span class="message-check">✓</span><div><strong>Olá, eu sou o Conferinho!</strong><small id="mascotMessage">Envie os dois relatórios e eu procuro as diferenças.</small></div></div>
+        <div class="mascot-message"><span class="message-check">✓</span><div><strong>Olá, eu sou o Conferinho!</strong><small id="mascotMessage">Eu encontro a diferença e também mostro por onde você deve começar.</small></div></div>
       </div>
     </section>
 
@@ -49,26 +49,57 @@
       <section class="upload-grid">
         <article class="panel upload-panel">
           <div class="panel-heading"><div class="step-number">1</div><div><span class="panel-kicker">PRIMEIRO LADO</span><h2>Relatório 1</h2><p>Arquivo usado como referência.</p></div><span class="multi-badge">1 ou vários PDFs</span></div>
+          <label class="report-name-field"><span>Como este relatório deve aparecer no resultado?</span><input id="reportALabel" type="text" value="Relatório 1" maxlength="40" placeholder="Ex.: Sistema Domínio" /></label>
           <label class="dropzone" id="reportADropzone" for="reportAInput"><input id="reportAInput" type="file" accept="application/pdf,.pdf" multiple /><span class="drop-icon">⇧</span><strong>Solte aqui o Relatório 1</strong><span>ou clique para selecionar os PDFs</span><em>Qualquer origem ou layout</em></label>
           <div class="file-list" id="reportAFileList"></div>
         </article>
         <div class="compare-bridge" aria-hidden="true"><span></span><b>↔</b><span></span></div>
         <article class="panel upload-panel warm-panel">
           <div class="panel-heading"><div class="step-number warm">2</div><div><span class="panel-kicker">SEGUNDO LADO</span><h2>Relatório 2</h2><p>Arquivo que será conferido.</p></div><span class="multi-badge warm">1 ou vários PDFs</span></div>
+          <label class="report-name-field"><span>Como este relatório deve aparecer no resultado?</span><input id="reportBLabel" type="text" value="Relatório 2" maxlength="40" placeholder="Ex.: Portal SEFAZ" /></label>
           <label class="dropzone warm" id="reportBDropzone" for="reportBInput"><input id="reportBInput" type="file" accept="application/pdf,.pdf" multiple /><span class="drop-icon warm">⇧</span><strong>Solte aqui o Relatório 2</strong><span>ou clique para selecionar os PDFs</span><em>Qualquer origem ou layout</em></label>
           <div class="file-list" id="reportBFileList"></div>
         </article>
       </section>
       <section class="panel action-panel">
-        <div><span class="panel-kicker">COMPARAÇÃO POR NOTA</span><h2>Ele pega a NF, procura no outro relatório e confere o valor</h2><p id="pdfStatusHint">Estou esperando pelo menos um PDF em cada campo.</p></div>
-        <button class="button button-primary button-large" id="compareBtn" type="button" disabled>✓ Comparar relatórios</button>
+        <div><span class="panel-kicker">COMPARAÇÃO E PLANO DE AÇÃO</span><h2>O Conferinho soma lançamentos da mesma NF, compara os totais e mostra o que fazer</h2><p id="pdfStatusHint">Estou esperando pelo menos um PDF em cada campo.</p></div>
+        <button class="button button-primary button-large" id="compareBtn" type="button" disabled>✓ Comparar e analisar</button>
       </section>
       <section id="pdfProgress" class="panel progress-panel hidden" aria-live="polite"><div class="progress-avatar">🤖</div><div class="progress-content"><div class="progress-head"><strong id="pdfProgressTitle">Lendo relatórios...</strong><span id="pdfProgressPercent">0%</span></div><div class="progress-track"><div id="pdfProgressBar" class="progress-bar"></div></div><p id="pdfProgressDetail">Preparando arquivos</p></div></section>
       <section id="pdfResults" class="results-section hidden">
-        <div class="results-header"><div><span class="eyebrow"><span class="eyebrow-dot"></span> CONFERÊNCIA CONCLUÍDA</span><h2>Prontinho! Veja o que eu encontrei.</h2><p id="pdfResultSubtitle"></p></div><div class="results-actions"><button class="button button-ghost" id="pdfExportBtn">Exportar CSV</button><button class="button button-secondary" id="pdfPrintBtn">Imprimir relatório</button></div></div>
-        <div class="summary-grid five"><button class="summary-card active" data-pdf-filter="all"><span>Registros</span><strong id="pdfTotalCount">0</strong><small>analisados</small></button><button class="summary-card success" data-pdf-filter="ok"><span>Conferidos</span><strong id="pdfOkCount">0</strong><small>sem diferença</small></button><button class="summary-card warning" data-pdf-filter="divergent"><span>Divergentes</span><strong id="pdfDivergentCount">0</strong><small>precisam revisar</small></button><button class="summary-card danger" data-pdf-filter="missing"><span>Não localizados</span><strong id="pdfMissingCount">0</strong><small>em um dos lados</small></button><button class="summary-card purple" data-pdf-filter="duplicate"><span>Duplicados</span><strong id="pdfDuplicateCount">0</strong><small>possíveis repetições</small></button></div>
+        <div class="results-header"><div><span class="eyebrow"><span class="eyebrow-dot"></span> PAINEL DE DECISÃO</span><h2>Diagnóstico da conferência.</h2><p id="pdfResultSubtitle"></p></div><div class="results-actions"><button class="button button-ghost" id="pdfCopySummaryBtn">Copiar resumo</button><button class="button button-ghost" id="pdfExportBtn">Exportar plano de ação</button><button class="button button-secondary" id="pdfPrintBtn">Imprimir</button></div></div>
+
+        <div class="decision-layout">
+          <article class="panel decision-card" id="pdfDecisionCard">
+            <div class="decision-card-head"><span class="decision-icon" id="pdfDecisionIcon">!</span><span class="decision-level" id="pdfDecisionLevel">ANALISANDO</span></div>
+            <h3 id="pdfDecisionTitle">Resultado da conferência</h3>
+            <p id="pdfDecisionText"></p>
+            <div class="decision-next" id="pdfDecisionNext"></div>
+          </article>
+          <article class="panel priority-panel">
+            <div class="priority-panel-head"><div><span class="panel-kicker">COMECE POR AQUI</span><h3>Maiores prioridades</h3></div><span id="pdfPendingBadge" class="pending-badge">0 pendências</span></div>
+            <div id="pdfPriorityList" class="priority-list"></div>
+          </article>
+        </div>
+
+        <div class="financial-grid">
+          <article class="financial-card"><span id="pdfTotalALabel">Total Relatório 1</span><strong id="pdfTotalAValue">R$ 0,00</strong><small id="pdfTotalARecords">0 registros</small></article>
+          <article class="financial-card"><span id="pdfTotalBLabel">Total Relatório 2</span><strong id="pdfTotalBValue">R$ 0,00</strong><small id="pdfTotalBRecords">0 registros</small></article>
+          <article class="financial-card net" id="pdfNetCard"><span>Diferença líquida</span><strong id="pdfNetDifference">R$ 0,00</strong><small id="pdfNetDirection">Totais equilibrados</small></article>
+          <article class="financial-card risk"><span>Valor que exige conferência</span><strong id="pdfOpenImpact">R$ 0,00</strong><small>soma do impacto das pendências</small></article>
+        </div>
+
+        <div class="panel reconciliation-panel">
+          <div class="reconciliation-copy"><span class="panel-kicker">CONCILIAÇÃO FINANCEIRA</span><h3 id="pdfReconciliationTitle">Como a diferença é formada</h3><p id="pdfReconciliationText"></p></div>
+          <div class="reconciliation-equation" id="pdfReconciliationEquation"></div>
+        </div>
+
+        <div class="summary-grid six"><button class="summary-card active" data-pdf-filter="all"><span>NFs comparadas</span><strong id="pdfTotalCount">0</strong><small>após consolidação</small></button><button class="summary-card success" data-pdf-filter="ok"><span>Conferidas</span><strong id="pdfOkCount">0</strong><small>sem diferença</small></button><button class="summary-card warning" data-pdf-filter="divergent"><span>Divergentes</span><strong id="pdfDivergentCount">0</strong><small>após a soma</small></button><button class="summary-card danger" data-pdf-filter="missing"><span>Ausentes</span><strong id="pdfMissingCount">0</strong><small>em um dos lados</small></button><button class="summary-card purple" data-pdf-filter="grouped"><span>NFs agrupadas</span><strong id="pdfGroupedCount">0</strong><small>lançamentos somados</small></button><button class="summary-card pending" data-pdf-filter="pending"><span>Pendências</span><strong id="pdfPendingCount">0</strong><small id="pdfResolvedCount">0 resolvidas</small></button></div>
         <div class="panel validation-panel" id="pdfValidationPanel"></div>
-        <div class="panel table-panel"><div class="table-toolbar"><div class="filter-tabs"><button class="filter-tab active" data-pdf-filter="all">Todos</button><button class="filter-tab" data-pdf-filter="missing-b">Só no Relatório 1</button><button class="filter-tab" data-pdf-filter="missing-a">Só no Relatório 2</button><button class="filter-tab" data-pdf-filter="divergent">Divergentes</button><button class="filter-tab" data-pdf-filter="ok">Conferidos</button><button class="filter-tab" data-pdf-filter="duplicate">Notas repetidas</button></div><label class="search-box">⌕<input id="pdfSearchInput" placeholder="Buscar número da nota ou fornecedor" /></label></div><div class="table-wrap"><table><thead><tr><th>Situação</th><th>Número da nota</th><th>Resultado / fornecedor</th><th>Data Rel. 1</th><th>Data Rel. 2</th><th class="align-right">Valor Rel. 1</th><th class="align-right">Valor Rel. 2</th><th>Arquivos</th></tr></thead><tbody id="pdfResultsBody"></tbody></table><div id="pdfEmptyResults" class="empty-results hidden"><div>⌕</div><strong>Nenhum item encontrado</strong><span>Altere o filtro ou o termo de busca.</span></div></div></div>
+        <div class="panel table-panel">
+          <div class="table-toolbar"><div class="filter-tabs"><button class="filter-tab active" data-pdf-filter="all">Todos</button><button class="filter-tab" data-pdf-filter="pending">Pendências</button><button class="filter-tab" data-pdf-filter="critical">Críticas</button><button class="filter-tab" data-pdf-filter="missing-b">Só no Relatório 1</button><button class="filter-tab" data-pdf-filter="missing-a">Só no Relatório 2</button><button class="filter-tab" data-pdf-filter="divergent">Divergentes</button><button class="filter-tab" data-pdf-filter="grouped">Agrupadas / somadas</button><button class="filter-tab" data-pdf-filter="duplicate">Repetições para revisar</button><button class="filter-tab" data-pdf-filter="resolved">Resolvidas</button><button class="filter-tab" data-pdf-filter="ok">Conferidas</button></div><label class="search-box">⌕<input id="pdfSearchInput" placeholder="Buscar NF, fornecedor ou anotação" /></label></div>
+          <div class="table-wrap"><table class="decision-table"><thead><tr><th>Prioridade</th><th>Situação / NF</th><th>Comparação</th><th class="align-right">Impacto</th><th>Próxima ação</th><th>Andamento</th></tr></thead><tbody id="pdfResultsBody"></tbody></table><div id="pdfEmptyResults" class="empty-results hidden"><div>⌕</div><strong>Nenhum item encontrado</strong><span>Altere o filtro ou o termo de busca.</span></div></div>
+        </div>
       </section>
     </section>
 
@@ -90,15 +121,15 @@
 
 
     <section id="sumModule" class="module-section hidden">
-      <div class="flow-intro"><span class="flow-kicker">SOMADOR DE NOTAS</span><h2>Cole um ou vários prints e receba o total das NFs.</h2><p>Pressione Ctrl + V quantas vezes precisar. O Conferinho junta os prints, lê as notas e monta um relatório revisável.</p></div>
+      <div class="flow-intro"><span class="flow-kicker">SOMADOR DE NOTAS</span><h2>Cole o print da tabela e some a coluna Total NF.</h2><p>O Conferinho trata a imagem, remove as linhas da grade e lê cada registro pelas colunas Nº NF e Total NF.</p></div>
       <section class="panel nfse-upload-panel" id="sumUploadPanel">
         <label class="dropzone sum-dropzone" id="sumDropzone" for="sumInput" tabindex="0" aria-label="Cole prints com Control V, arraste arquivos ou clique para selecionar">
           <input id="sumInput" type="file" accept="application/pdf,.pdf,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" multiple />
           <span class="drop-icon sum-paste-icon">Ctrl+V</span>
-          <strong>Cole um print aqui com Ctrl + V</strong>
-          <span>Também pode arrastar ou clicar para selecionar vários prints e PDFs</span>
+          <strong>Cole aqui o print do relatório com Ctrl + V</strong>
+          <span>Também pode arrastar ou selecionar vários prints e PDFs de tabelas</span>
           <div class="paste-shortcut" aria-hidden="true"><kbd>Ctrl</kbd><b>+</b><kbd>V</kbd><small>Você pode colar um print depois do outro</small></div>
-          <em>PDF, PNG, JPG ou WEBP — leitura local com OCR</em>
+          <em>Reconhece tabelas com Nº NF, data, UF e Total NF</em>
         </label>
         <div class="nfse-upload-footer sum-upload-footer">
           <div id="sumQueueText"><strong>Nenhum arquivo selecionado</strong><span>Copie um print, volte para esta tela e pressione Ctrl + V.</span></div>
@@ -110,7 +141,7 @@
       <section id="sumResults" class="results-section hidden">
         <div class="results-header"><div><span class="eyebrow"><span class="eyebrow-dot"></span> SOMA CONCLUÍDA</span><h2>Relatório das notas identificadas.</h2><p id="sumResultSubtitle">Confira os itens antes de exportar.</p></div><div class="results-actions"><button class="button button-ghost" id="sumAddBtn" type="button">+ Adicionar NF</button><button class="button button-ghost" id="sumExportBtn" type="button">Exportar CSV</button><button class="button button-secondary" id="sumPrintBtn" type="button">Imprimir / salvar PDF</button></div></div>
         <div class="summary-grid four"><button class="summary-card active" data-sum-filter="all"><span>Arquivos e páginas</span><strong id="sumPagesCount">0</strong><small id="sumFilesCountText">0 arquivos</small></button><button class="summary-card success" data-sum-filter="included"><span>NFs incluídas</span><strong id="sumNotesCount">0</strong><small>usadas na soma</small></button><button class="summary-card warning" data-sum-filter="review"><span>Precisam revisar</span><strong id="sumReviewCount">0</strong><small>OCR ou duplicidade</small></button><button class="summary-card sum-total-card" data-sum-filter="included"><span>Valor total das NFs</span><strong id="sumGrandTotal">R$ 0,00</strong><small>soma dos itens marcados</small></button></div>
-        <div class="panel validation-panel sum-help"><strong>Como funciona:</strong> o Conferinho procura o número da NF e o valor total ligado a ela. Itens incertos ficam marcados para revisão. Você pode corrigir o número, alterar o valor, desmarcar uma linha ou adicionar uma NF manualmente antes de exportar.</div>
+        <div class="panel validation-panel sum-help"><strong>Como funciona:</strong> em prints de relatórios, o Conferinho remove a grade da tabela, lê cada linha e liga o campo Nº NF ao valor da coluna Total NF. Ele não soma inscrição estadual, CNPJ, número da nota ou data. Itens incertos continuam editáveis antes da exportação.</div>
         <div id="sumWarnings" class="panel warning-box hidden"><strong>Atenção na conferência</strong><ul id="sumWarningsList"></ul></div>
         <div class="panel table-panel"><div class="table-toolbar"><div class="filter-tabs"><button class="filter-tab active" data-sum-filter="all">Todas</button><button class="filter-tab" data-sum-filter="included">Incluídas na soma</button><button class="filter-tab" data-sum-filter="review">Precisam revisar</button><button class="filter-tab" data-sum-filter="excluded">Desmarcadas</button></div><label class="search-box">⌕<input id="sumSearchInput" placeholder="Buscar NF ou arquivo" /></label></div><div class="table-wrap"><table class="sum-table"><thead><tr><th>Incluir</th><th>Situação</th><th>Número da NF</th><th class="align-right">Valor total</th><th>Arquivo / página</th><th>Trecho reconhecido</th><th></th></tr></thead><tbody id="sumResultsBody"></tbody></table><div id="sumEmptyResults" class="empty-results hidden"><div>⌕</div><strong>Nenhuma NF encontrada</strong><span>Tente outra imagem ou adicione uma linha manualmente.</span></div></div></div>
       </section>

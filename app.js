@@ -3,7 +3,7 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const pdfState = { filesA: [], filesB: [], records: [], filter: "all", search: "" };
+const pdfState = { filesA: [], filesB: [], records: [], filter: "all", search: "", labels: { A: "Relatório 1", B: "Relatório 2" }, metrics: null };
 const nfseState = { files: [], notes: [], warnings: [], processed: 0, failed: 0, filter: "retained", search: "" };
 const sumState = { files: [], records: [], warnings: [], pages: 0, filter: "all", search: "" };
 
@@ -12,9 +12,9 @@ if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.clo
 const moduleCopy = {
   pdf: {
     title: 'Deixe que o <span>Conferinho</span> encontre as diferenças para você.',
-    text: "Envie dois relatórios, de qualquer origem. O Conferinho organiza os dados e mostra o que está igual, diferente ou ausente.",
-    benefits: ["Vários arquivos de cada lado", "Leitura automática", "Resultado exportável"],
-    mascot: "Envie os dois relatórios e eu procuro as diferenças."
+    text: "Envie dois relatórios. O Conferinho agrupa os lançamentos da mesma NF, soma os valores, compara os totais e entrega um plano de ação por prioridade.",
+    benefits: ["Soma automática por NF", "Comparação do total consolidado", "Plano de ação exportável"],
+    mascot: "Eu somo os lançamentos desdobrados antes de comparar e mostro por onde começar."
   },
   nfse: {
     title: 'O <span>Conferinho</span> também analisa suas NFS-e.',
@@ -23,10 +23,10 @@ const moduleCopy = {
     mascot: "Pode mandar os XMLs que eu separo as retenções."
   },
   sum: {
-    title: 'Cole seus prints e o <span>Conferinho</span> soma as NFs.',
-    text: "Copie um print e pressione Ctrl + V. Você pode colar vários, misturar com PDFs e depois gerar um relatório com o total.",
-    benefits: ["Cole com Ctrl + V", "Vários prints na mesma fila", "Total e relatório revisável"],
-    mascot: "Pode colar os prints um por um que eu junto tudo na mesma conferência."
+    title: 'Cole a tabela e o <span>Conferinho</span> soma a coluna Total NF.',
+    text: "Copie o print do relatório e pressione Ctrl + V. Eu removo a grade, leio cada linha, identifico o Nº NF e somo somente o Total NF.",
+    benefits: ["Lê Nº NF + Total NF", "Vários prints na mesma fila", "Total e relatório revisável"],
+    mascot: "Pode colar a tabela: eu leio cada NF e somo a coluna Total NF."
   }
 };
 
@@ -103,9 +103,12 @@ $('#compareBtn').addEventListener('click', comparePdfs);
 $('#pdfSearchInput').addEventListener('input', (event) => { pdfState.search = normalize(event.target.value); renderPdfTable(); });
 $$('[data-pdf-filter]').forEach((button) => button.addEventListener('click', () => { pdfState.filter = button.dataset.pdfFilter; $$('[data-pdf-filter]').forEach((b) => b.classList.toggle('active', b.dataset.pdfFilter === pdfState.filter)); renderPdfTable(); }));
 $('#pdfExportBtn').addEventListener('click', exportPdfCsv);
+$('#pdfCopySummaryBtn').addEventListener('click', copyPdfExecutiveSummary);
 $('#pdfPrintBtn').addEventListener('click', () => window.print());
 
 async function comparePdfs() {
+  pdfState.labels.A = ($('#reportALabel').value || 'Relatório 1').trim();
+  pdfState.labels.B = ($('#reportBLabel').value || 'Relatório 2').trim();
   $('#pdfProgress').classList.remove('hidden'); $('#pdfResults').classList.add('hidden'); $('#compareBtn').disabled = true;
   try {
     const total = pdfState.filesA.length + pdfState.filesB.length; let done = 0;
@@ -121,11 +124,14 @@ async function comparePdfs() {
     const docsA = await readGroup(pdfState.filesA, 'A');
     const docsB = await readGroup(pdfState.filesB, 'B');
     updatePdfProgress(.86, 'Organizando registros e comparando os dois lados');
-    const rowsA = docsA.flatMap((doc) => recordsFromText(doc.text, doc.fileName, 'A'));
-    const rowsB = docsB.flatMap((doc) => recordsFromText(doc.text, doc.fileName, 'B'));
-    pdfState.records = matchRecords(rowsA, rowsB);
-    updatePdfProgress(1, 'Conferência concluída');
-    renderPdfResults(rowsA, rowsB);
+    const rawRowsA = docsA.flatMap((doc) => recordsFromText(doc.text, doc.fileName, 'A'));
+    const rawRowsB = docsB.flatMap((doc) => recordsFromText(doc.text, doc.fileName, 'B'));
+    updatePdfProgress(.92, 'Somando lançamentos desdobrados da mesma NF');
+    const rowsA = consolidatePdfRecords(rawRowsA, 'A');
+    const rowsB = consolidatePdfRecords(rawRowsB, 'B');
+    pdfState.records = enrichPdfDecisions(matchRecords(rowsA, rowsB), rowsA, rowsB, rawRowsA, rawRowsB);
+    updatePdfProgress(1, 'Consolidação, diagnóstico e plano de ação concluídos');
+    renderPdfResults(rowsA, rowsB, rawRowsA, rawRowsB);
   } catch (error) {
     showToast(`Não foi possível comparar: ${error.message}`, true);
   } finally { $('#compareBtn').disabled = false; }
@@ -221,7 +227,7 @@ function cleanDescription(value) {
   return String(value || '').replace(/\s+/g, ' ').replace(/^[-–—|:]+|[-–—|:]+$/g, '').trim();
 }
 
-function makePdfRecord({ side, fileName, identifier, description, date, value, raw, document = '', confidence = 50, extraction = 'generic' }) {
+function makePdfRecord({ side, fileName, identifier, description, date, value, raw, document = '', series = '', confidence = 50, extraction = 'generic' }) {
   const note = normalizeInvoiceNumber(identifier);
   if (!note || value == null) return null;
   return {
@@ -233,6 +239,7 @@ function makePdfRecord({ side, fileName, identifier, description, date, value, r
     value: Math.abs(value),
     raw,
     document: onlyDigits(document),
+    series: String(series || '').replace(/[^0-9A-Za-z-]/g, '').trim(),
     confidence,
     extraction
   };
@@ -255,11 +262,14 @@ function parseEntriesLine(line, fileName, side) {
   const afterNote = afterDate.slice((noteMatch.index || 0) + noteMatch[0].length);
   const moneyMatches = getMoneyMatches(afterNote);
   if (!moneyMatches.length) return null;
-  let supplierPart = afterNote.replace(/^\s*\d+\s+\d+\s+/, '');
+  const metadataMatch = afterNote.match(/^\s*(\d{1,4})\s+\d{1,3}\s+\d{1,3}\s+/);
+  const series = metadataMatch?.[1] || '';
+  let supplierPart = afterNote.replace(/^\s*\d+\s+\d+\s+\d+\s+/, '').replace(/^\s*\d+\s+\d+\s+/, '');
   const cfopIndex = supplierPart.search(/\s+\d[-.]\d{3}\s+/);
   if (cfopIndex >= 0) supplierPart = supplierPart.slice(0, cfopIndex);
   else supplierPart = supplierPart.slice(0, moneyMatches[0].index);
-  return makePdfRecord({ side, fileName, identifier: noteMatch[1], description: supplierPart, date: dateMatch[0], value: moneyMatches[0].value, raw: line, confidence: 96, extraction: 'entries' });
+  const documentMatches = [...line.matchAll(/\d{11,14}/g)];
+  return makePdfRecord({ side, fileName, identifier: noteMatch[1], description: supplierPart, date: dateMatch[0], value: moneyMatches[0].value, raw: line, document: documentMatches.at(-1)?.[0] || '', series, confidence: 96, extraction: 'entries' });
 }
 
 function parseCashbookLine(line, fileName, side) {
@@ -407,28 +417,18 @@ function recordsFromInvoiceAnchors(text, fileName, side) {
 function selectBestRecords(records) {
   const grouped = new Map();
   records.forEach((record) => {
-    const key = `${record.fileName}|${record.identifier}`;
+    const key = [
+      record.fileName,
+      record.identifier,
+      record.date,
+      record.value?.toFixed(2),
+      record.document,
+      record.series
+    ].join('|');
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key).push(record);
   });
-
-  const selected = [];
-  grouped.forEach((group) => {
-    // Agrupa candidatos pelo valor. Um valor encontrado repetidamente ganha confiança extra.
-    const byValue = new Map();
-    group.forEach((record) => {
-      const valueKey = record.value.toFixed(2);
-      if (!byValue.has(valueKey)) byValue.set(valueKey, []);
-      byValue.get(valueKey).push(record);
-    });
-    const ranked = [...byValue.values()].map((sameValue) => {
-      const best = [...sameValue].sort((a, b) => b.confidence - a.confidence)[0];
-      const score = best.confidence + Math.min(12, (sameValue.length - 1) * 4);
-      return { best, score, occurrences: sameValue.length };
-    }).sort((a, b) => b.score - a.score || b.best.confidence - a.best.confidence);
-    if (ranked[0]) selected.push(ranked[0].best);
-  });
-  return selected;
+  return [...grouped.values()].map((group) => [...group].sort((a, b) => b.confidence - a.confidence)[0]);
 }
 
 function recordsFromText(text, fileName, side) {
@@ -437,15 +437,112 @@ function recordsFromText(text, fileName, side) {
   const parser = reportType === 'sefaz-ms' ? parseSefazMsLine : reportType === 'entries' ? parseEntriesLine : reportType === 'cashbook' ? parseCashbookLine : parseGenericPdfLine;
   const rowRecords = lines.map((line) => parser(line, fileName, side)).filter(Boolean);
   const anchoredRecords = recordsFromInvoiceAnchors(text, fileName, side);
-  return selectBestRecords([...anchoredRecords, ...rowRecords]).slice(0, 5000);
+
+  // Nos relatórios tabulares, cada linha representa um lançamento real. Mantemos todas as
+  // linhas, inclusive quando a mesma NF aparece com valores diferentes. Os registros por
+  // âncora entram somente como complemento quando o leitor tabular não encontrou a linha.
+  if (rowRecords.length) {
+    const supplemental = selectBestRecords(anchoredRecords).filter((anchor) => !rowRecords.some((row) =>
+      row.identifier === anchor.identifier &&
+      Math.abs((row.value || 0) - (anchor.value || 0)) <= 0.01 &&
+      (!row.date || !anchor.date || row.date === anchor.date)
+    ));
+    return [...rowRecords, ...supplemental].slice(0, 5000);
+  }
+  return selectBestRecords(anchoredRecords).slice(0, 5000);
+}
+
+function meaningfulSupplierText(value) {
+  return normalize(value)
+    .replace(/\b(?:ltda|me|eireli|sa|s a|icms|iss|valor|total|nota|fiscal|relatorio|pagina|cfop|modelo|serie)\b/g, ' ')
+    .replace(/\b\d+[.,/-]?\d*\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function canJoinConsolidationCluster(record, cluster) {
+  const representative = cluster[0];
+  if (record.document && representative.document && record.document !== representative.document) return false;
+  if (record.series && representative.series && record.series !== representative.series) return false;
+  const left = meaningfulSupplierText(record.description);
+  const right = meaningfulSupplierText(representative.description);
+  if (left && right && left.length >= 5 && right.length >= 5 && similarity(left, right) < 0.18) return false;
+  return true;
+}
+
+function consolidatePdfRecords(records, side) {
+  const byInvoice = new Map();
+  records.forEach((record) => {
+    if (!byInvoice.has(record.identifier)) byInvoice.set(record.identifier, []);
+    byInvoice.get(record.identifier).push(record);
+  });
+
+  const consolidated = [];
+  byInvoice.forEach((invoiceRecords, identifier) => {
+    const clusters = [];
+    [...invoiceRecords].sort((a, b) => (a.document || '').localeCompare(b.document || '') || (a.series || '').localeCompare(b.series || '') || (a.date || '').localeCompare(b.date || '')).forEach((record) => {
+      const cluster = clusters.find((candidate) => canJoinConsolidationCluster(record, candidate));
+      if (cluster) cluster.push(record); else clusters.push([record]);
+    });
+
+    clusters.forEach((components, clusterIndex) => {
+      const representative = [...components].sort((a, b) => b.confidence - a.confidence)[0];
+      const values = components.map((item) => Number(item.value || 0));
+      const uniqueFiles = [...new Set(components.map((item) => item.fileName).filter(Boolean))];
+      const uniqueDates = [...new Set(components.map((item) => item.date).filter(Boolean))];
+      const uniqueDocuments = [...new Set(components.map((item) => item.document).filter(Boolean))];
+      const uniqueSeries = [...new Set(components.map((item) => item.series).filter(Boolean))];
+      const identicalSignatureCount = new Map();
+      components.forEach((item) => {
+        const signature = [item.value?.toFixed(2), item.date, meaningfulSupplierText(item.description)].join('|');
+        identicalSignatureCount.set(signature, (identicalSignatureCount.get(signature) || 0) + 1);
+      });
+      const hasIdenticalComponents = [...identicalSignatureCount.values()].some((count) => count > 1);
+      consolidated.push({
+        ...representative,
+        side,
+        identifier,
+        value: Math.round(values.reduce((sum, value) => sum + value, 0) * 100) / 100,
+        fileName: uniqueFiles.join(' + '),
+        date: uniqueDates.length === 1 ? uniqueDates[0] : uniqueDates.join(', '),
+        document: uniqueDocuments.length === 1 ? uniqueDocuments[0] : representative.document || '',
+        series: uniqueSeries.length === 1 ? uniqueSeries[0] : representative.series || '',
+        components: components.map((item, index) => ({
+          id: `${side}-${identifier}-${clusterIndex}-${index}`,
+          value: item.value,
+          date: item.date,
+          fileName: item.fileName,
+          description: item.description,
+          document: item.document,
+          series: item.series,
+          raw: item.raw
+        })),
+        componentCount: components.length,
+        consolidated: components.length > 1,
+        hasIdenticalComponents,
+        confidence: Math.min(...components.map((item) => Number(item.confidence || 0))),
+        consolidationKey: `${identifier}|${uniqueDocuments.join(',')}|${uniqueSeries.join(',')}|${clusterIndex}`
+      });
+    });
+  });
+  return consolidated.sort((a, b) => Number(a.identifier) - Number(b.identifier) || a.identifier.localeCompare(b.identifier));
 }
 
 function parseLocaleNumber(value) {
   if (value == null || value === '') return null;
-  let text = String(value).replace(/R\$/gi, '').replace(/\s/g, '');
-  if (text.includes(',') && text.includes('.')) text = text.lastIndexOf(',') > text.lastIndexOf('.') ? text.replace(/\./g, '').replace(',', '.') : text.replace(/,/g, '');
-  else if (text.includes(',')) text = text.replace(/\./g, '').replace(',', '.');
-  text = text.replace(/[^0-9.-]/g, ''); const number = Number(text); return Number.isFinite(number) ? number : null;
+  let text = String(value).replace(/R\$/gi, '').replace(/\s/g, '').replace(/[^0-9,.-]/g, '');
+  if (text.includes(',') && text.includes('.')) {
+    text = text.lastIndexOf(',') > text.lastIndexOf('.') ? text.replace(/\./g, '').replace(',', '.') : text.replace(/,/g, '');
+  } else if (text.includes(',')) {
+    const parts = text.split(',');
+    text = parts.length > 2 && parts.at(-1).length === 2 ? `${parts.slice(0, -1).join('')}.${parts.at(-1)}` : text.replace(/\./g, '').replace(',', '.');
+  } else if (text.includes('.')) {
+    const parts = text.split('.');
+    if (parts.length > 2 && parts.at(-1).length === 2) text = `${parts.slice(0, -1).join('')}.${parts.at(-1)}`;
+  }
+  text = text.replace(/[^0-9.-]/g, '');
+  const number = Number(text);
+  return Number.isFinite(number) ? number : null;
 }
 
 function similarity(a, b) {
@@ -460,8 +557,11 @@ function chooseBestSameNoteMatch(record, candidates, usedIndexes) {
     if (usedIndexes.has(index)) return;
     const difference = record.value == null || candidate.value == null ? Number.POSITIVE_INFINITY : Math.abs(record.value - candidate.value);
     const sameDocument = record.document && candidate.document && record.document === candidate.document ? 1 : 0;
+    const conflictingDocument = record.document && candidate.document && record.document !== candidate.document ? 1 : 0;
+    const sameSeries = record.series && candidate.series && record.series === candidate.series ? 1 : 0;
+    const conflictingSeries = record.series && candidate.series && record.series !== candidate.series ? 1 : 0;
     const supplierScore = similarity(record.description, candidate.description);
-    const score = (difference <= 0.01 ? 1000 : 0) + sameDocument * 100 + supplierScore * 10 - Math.min(difference, 999999) / 1000000;
+    const score = (difference <= 0.01 ? 1000 : 0) + sameDocument * 160 + sameSeries * 60 + supplierScore * 25 - conflictingDocument * 400 - conflictingSeries * 120 - Math.min(difference, 999999) / 1000000;
     if (!best || score > best.score) best = { candidate, index, difference, score };
   });
   return best;
@@ -476,72 +576,455 @@ function matchRecords(rowsA, rowsB) {
   keys.forEach((identifier) => {
     const groupA = byA.get(identifier) || [];
     const groupB = byB.get(identifier) || [];
+    // Depois da consolidação, mais de um grupo com o mesmo número indica possível conflito
+    // de fornecedor/série — isso é diferente de uma NF apenas desdobrada em várias linhas.
     const duplicate = groupA.length > 1 || groupB.length > 1;
     const usedB = new Set();
     groupA.forEach((a) => {
       const best = chooseBestSameNoteMatch(a, groupB, usedB);
       if (!best) {
-        output.push({ status: 'missing-b', a, b: null, duplicate, reason: `NF ${a.identifier} não está no Relatório 2.` });
+        output.push({ status: 'missing-b', a, b: null, duplicate, grouped: !!a.consolidated, reason: `NF ${a.identifier} não está no Relatório 2.` });
         return;
       }
       usedB.add(best.index);
       const sameValue = best.difference <= 0.01;
+      const grouped = !!(a.consolidated || best.candidate.consolidated);
       output.push({
         status: sameValue ? 'ok' : 'divergent',
         a,
         b: best.candidate,
         duplicate,
+        grouped,
         difference: Number.isFinite(best.difference) ? best.difference : null,
-        reason: sameValue ? `NF ${a.identifier} localizada no outro relatório com o mesmo valor.` : `NF ${a.identifier} localizada nos dois relatórios, mas o valor está diferente: ${money.format(a.value)} no Relatório 1 e ${money.format(best.candidate.value)} no Relatório 2.`
+        reason: sameValue
+          ? grouped
+            ? `NF ${a.identifier} conferida depois de somar os lançamentos desdobrados.`
+            : `NF ${a.identifier} localizada no outro relatório com o mesmo valor.`
+          : grouped
+            ? `NF ${a.identifier} foi consolidada, mas o total ainda está diferente: ${money.format(a.value)} no Relatório 1 e ${money.format(best.candidate.value)} no Relatório 2.`
+            : `NF ${a.identifier} localizada nos dois relatórios, mas o valor está diferente: ${money.format(a.value)} no Relatório 1 e ${money.format(best.candidate.value)} no Relatório 2.`
       });
     });
     groupB.forEach((b, index) => {
-      if (!usedB.has(index)) output.push({ status: 'missing-a', a: null, b, duplicate, reason: `NF ${b.identifier} não está no Relatório 1.` });
+      if (!usedB.has(index)) output.push({ status: 'missing-a', a: null, b, duplicate, grouped: !!b.consolidated, reason: `NF ${b.identifier} não está no Relatório 1.` });
     });
   });
   return output;
 }
 
-function renderPdfResults(rowsA, rowsB) {
-  const rows = pdfState.records; const ok = rows.filter((r) => r.status === 'ok').length; const divergent = rows.filter((r) => r.status === 'divergent').length; const missing = rows.filter((r) => r.status.startsWith('missing')).length; const duplicate = rows.filter((r) => r.duplicate).length;
-  $('#pdfTotalCount').textContent = rows.length; $('#pdfOkCount').textContent = ok; $('#pdfDivergentCount').textContent = divergent; $('#pdfMissingCount').textContent = missing; $('#pdfDuplicateCount').textContent = duplicate;
-  $('#pdfResultSubtitle').textContent = `${rowsA.length} registros extraídos do Relatório 1 e ${rowsB.length} do Relatório 2.`;
-  $('#pdfValidationPanel').innerHTML = `<strong>Regra usada pelo Conferinho:</strong> ele lê cada NF, identifica seu valor e procura esse mesmo número em qualquer lugar do outro relatório. Se encontrar a NF com o mesmo valor, marca como conferida. Se encontrar a NF com outro valor, marca como divergente. Se não encontrar o número, marca como ausente.`;
-  $('#pdfResults').classList.remove('hidden'); renderPdfTable(); $('#pdfResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+function formatSignedMoney(value) {
+  if (Math.abs(value) <= 0.009) return money.format(0);
+  return `${value > 0 ? '+' : '−'} ${money.format(Math.abs(value))}`;
+}
+
+function pdfStatusLabel(status, grouped = false) {
+  if (grouped && status === 'ok') return 'Conferida após soma';
+  if (grouped && status === 'divergent') return 'Divergente após soma';
+  return ({ ok: 'Conferido', divergent: 'Valor divergente', 'missing-a': `Ausente no ${pdfState.labels.A}`, 'missing-b': `Ausente no ${pdfState.labels.B}` })[status] || status;
+}
+
+function pdfPriorityLabel(priority) {
+  return ({ critical: 'Crítica', high: 'Alta', medium: 'Revisar', ok: 'Conferida' })[priority] || 'Revisar';
+}
+
+function buildPdfAction(row) {
+  const labelA = pdfState.labels.A;
+  const labelB = pdfState.labels.B;
+  let action = '';
+  if (row.status === 'missing-b') {
+    action = row.grouped
+      ? `A NF foi somada em ${row.a?.componentCount || 1} lançamento(s) no ${labelA}, totalizando ${money.format(row.a?.value || 0)}. Procure esse total no ${labelB}; confira período, importação, cancelamento e filtros.`
+      : `Localize a NF no ${labelB}. Confira período, importação, cancelamento e filtros; inclua a nota se for válida ou documente o motivo da ausência.`;
+  } else if (row.status === 'missing-a') {
+    action = row.grouped
+      ? `A NF foi somada em ${row.b?.componentCount || 1} lançamento(s) no ${labelB}, totalizando ${money.format(row.b?.value || 0)}. Procure esse total no ${labelA}; confira período, importação, cancelamento e filtros.`
+      : `Localize a NF no ${labelA}. Confira período, importação, cancelamento e filtros; inclua a nota se for válida ou documente o motivo da ausência.`;
+  } else if (row.status === 'divergent') {
+    const delta = (row.b?.value || 0) - (row.a?.value || 0);
+    const higher = delta > 0 ? labelB : labelA;
+    const lower = delta > 0 ? labelA : labelB;
+    action = row.grouped
+      ? `A soma dos lançamentos já foi feita automaticamente. Abra “Ver composição”, confira os valores que formam cada total e identifique lançamento faltante, duplicado, CFOP desdobrado incorretamente ou diferença no XML. O ${higher} está ${money.format(Math.abs(delta))} maior que o ${lower}.`
+      : `Abra a NF/XML e confirme o valor correto. O ${higher} está ${money.format(Math.abs(delta))} maior que o ${lower}; corrija o lançamento ou a importação incorreta.`;
+  } else if (row.duplicate) {
+    action = `Existem grupos diferentes com o mesmo número de NF. Confirme CNPJ, série e fornecedor antes de unir ou excluir lançamentos.`;
+  } else if (row.exactComponentDuplicate) {
+    action = `A NF foi consolidada, mas há lançamentos com mesmo valor, data e fornecedor. Confira se são desdobramentos legítimos ou duplicidade de escrituração.`;
+  } else if (row.lowConfidence) {
+    action = `Valide esta linha visualmente no PDF: a leitura automática teve baixa confiança e pode ter confundido número ou valor.`;
+  } else if (row.grouped) {
+    action = `Nenhuma ação necessária. O Conferinho somou ${Math.max(row.a?.componentCount || 1, row.b?.componentCount || 1)} lançamento(s) da mesma NF e o total conferiu com o outro relatório.`;
+  } else {
+    action = 'Nenhuma ação necessária. A NF foi localizada nos dois relatórios com o mesmo valor.';
+  }
+  if (row.duplicate && row.status !== 'ok') action = `Primeiro separe os grupos pelo CNPJ/série. Depois: ${action}`;
+  if (row.exactComponentDuplicate && row.status !== 'ok') action += ' Revise também os lançamentos repetidos dentro da composição.';
+  if (row.lowConfidence && row.status !== 'ok') action += ' Antes de corrigir, confirme também se a leitura do PDF está correta.';
+  return action;
+}
+
+function enrichPdfDecisions(records, rowsA, rowsB, rawRowsA = rowsA, rawRowsB = rowsB) {
+  const totalA = rawRowsA.reduce((sum, row) => sum + (row.value || 0), 0);
+  const totalB = rawRowsB.reduce((sum, row) => sum + (row.value || 0), 0);
+  const base = Math.max(totalA, totalB, 1);
+  const criticalThreshold = Math.max(1000, base * 0.01);
+  const enriched = records.map((row, index) => {
+    const valueA = row.a?.value || 0;
+    const valueB = row.b?.value || 0;
+    const impact = row.status === 'divergent' ? Math.abs(valueB - valueA) : row.status === 'missing-b' ? valueA : row.status === 'missing-a' ? valueB : 0;
+    const signedDifference = valueB - valueA;
+    const confidences = [row.a?.confidence, row.b?.confidence].filter((value) => Number.isFinite(value));
+    const confidence = confidences.length ? Math.min(...confidences) : 0;
+    const lowConfidence = confidence < 65;
+    const exactComponentDuplicate = !!(row.a?.hasIdenticalComponents || row.b?.hasIdenticalComponents);
+    const grouped = !!(row.grouped || row.a?.consolidated || row.b?.consolidated);
+    const needsAction = row.status !== 'ok' || row.duplicate || exactComponentDuplicate || lowConfidence;
+    let priority = 'ok';
+    if (needsAction) {
+      if ((row.status !== 'ok' && impact >= criticalThreshold) || (row.duplicate && row.status.startsWith('missing'))) priority = 'critical';
+      else if (row.status.startsWith('missing') || row.status === 'divergent' || row.duplicate || exactComponentDuplicate) priority = 'high';
+      else priority = 'medium';
+    }
+    const enrichedRow = {
+      ...row,
+      grouped,
+      exactComponentDuplicate,
+      id: `pdf-${Date.now()}-${index}-${row.a?.identifier || row.b?.identifier || index}`,
+      impact,
+      signedDifference,
+      confidence,
+      lowConfidence,
+      needsAction,
+      priority,
+      resolved: false,
+      note: ''
+    };
+    enrichedRow.action = buildPdfAction(enrichedRow);
+    return enrichedRow;
+  });
+  pdfState.metrics = {
+    totalA,
+    totalB,
+    rowsA: rawRowsA.length,
+    rowsB: rawRowsB.length,
+    consolidatedA: rowsA.length,
+    consolidatedB: rowsB.length,
+    groupedA: rowsA.filter((row) => row.consolidated).length,
+    groupedB: rowsB.filter((row) => row.consolidated).length,
+    groupedRowsA: rawRowsA.length - rowsA.length,
+    groupedRowsB: rawRowsB.length - rowsB.length,
+    netDifference: totalB - totalA,
+    missingOnlyA: enriched.filter((row) => row.status === 'missing-b').reduce((sum, row) => sum + row.impact, 0),
+    missingOnlyB: enriched.filter((row) => row.status === 'missing-a').reduce((sum, row) => sum + row.impact, 0),
+    divergentSigned: enriched.filter((row) => row.status === 'divergent').reduce((sum, row) => sum + row.signedDifference, 0),
+    criticalThreshold
+  };
+  return enriched;
+}
+
+function filteredPdfRows() {
+  const priorityRank = { critical: 0, high: 1, medium: 2, ok: 3 };
+  return pdfState.records.filter((row) => {
+    let filterOk = false;
+    if (pdfState.filter === 'all') filterOk = true;
+    else if (pdfState.filter === 'missing') filterOk = row.status.startsWith('missing');
+    else if (pdfState.filter === 'grouped') filterOk = row.grouped;
+    else if (pdfState.filter === 'duplicate') filterOk = row.duplicate || row.exactComponentDuplicate;
+    else if (pdfState.filter === 'pending') filterOk = row.needsAction && !row.resolved;
+    else if (pdfState.filter === 'critical') filterOk = row.priority === 'critical' && !row.resolved;
+    else if (pdfState.filter === 'resolved') filterOk = row.resolved;
+    else if (pdfState.filter === 'ok') filterOk = !row.needsAction;
+    else filterOk = row.status === pdfState.filter;
+    const componentText = [...(row.a?.components || []), ...(row.b?.components || [])].map((item) => [item.value, item.date, item.fileName, item.description, item.series].join(' ')).join(' ');
+    const searchable = normalize([row.a?.identifier,row.b?.identifier,row.a?.description,row.b?.description,row.a?.fileName,row.b?.fileName,row.reason,row.action,row.note,componentText].join(' '));
+    return filterOk && (!pdfState.search || searchable.includes(pdfState.search));
+  }).sort((a, b) => {
+    if (a.resolved !== b.resolved) return a.resolved ? 1 : -1;
+    return (priorityRank[a.priority] - priorityRank[b.priority]) || (b.impact - a.impact) || Number((a.a || a.b)?.identifier || 0) - Number((b.a || b.b)?.identifier || 0);
+  });
+}
+
+function renderPdfResults(rowsA, rowsB, rawRowsA = rowsA, rawRowsB = rowsB) {
+  const groupedA = rowsA.filter((row) => row.consolidated).length;
+  const groupedB = rowsB.filter((row) => row.consolidated).length;
+  $('#pdfResultSubtitle').textContent = `${rawRowsA.length} lançamento(s) viraram ${rowsA.length} NF(s) no ${pdfState.labels.A}; ${rawRowsB.length} lançamento(s) viraram ${rowsB.length} NF(s) no ${pdfState.labels.B}. ${groupedA + groupedB} NF(s) foram consolidadas automaticamente.`;
+  $('#pdfValidationPanel').innerHTML = `<strong>Consolidação automática ativada:</strong> quando a mesma NF aparece em várias linhas, o Conferinho soma os lançamentos antes de comparar. A chave considera número da NF e, quando disponíveis, CNPJ, série e fornecedor. Abra <b>“Ver composição”</b> para conferir como o total foi formado. “Impacto” mostra somente o valor ainda não explicado.`;
+  refreshPdfDecisionDashboard();
+  $('#pdfResults').classList.remove('hidden');
+  renderPdfTable();
+  $('#pdfResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function refreshPdfDecisionDashboard() {
+  const rows = pdfState.records;
+  const metrics = pdfState.metrics || { totalA: 0, totalB: 0, rowsA: 0, rowsB: 0, netDifference: 0, missingOnlyA: 0, missingOnlyB: 0, divergentSigned: 0 };
+  const ok = rows.filter((row) => !row.needsAction).length;
+  const divergent = rows.filter((row) => row.status === 'divergent').length;
+  const missing = rows.filter((row) => row.status.startsWith('missing')).length;
+  const grouped = rows.filter((row) => row.grouped).length;
+  const duplicate = rows.filter((row) => row.duplicate || row.exactComponentDuplicate).length;
+  const resolved = rows.filter((row) => row.needsAction && row.resolved).length;
+  const pendingRows = rows.filter((row) => row.needsAction && !row.resolved);
+  const criticalRows = pendingRows.filter((row) => row.priority === 'critical');
+  const openImpact = pendingRows.reduce((sum, row) => sum + row.impact, 0);
+  const reviewRows = pendingRows.filter((row) => row.lowConfidence).length;
+
+  $('#pdfTotalCount').textContent = rows.length;
+  $('#pdfOkCount').textContent = ok;
+  $('#pdfDivergentCount').textContent = divergent;
+  $('#pdfMissingCount').textContent = missing;
+  const groupedCounter = $('#pdfGroupedCount');
+  if (groupedCounter) groupedCounter.textContent = grouped;
+  const duplicateCounter = $('#pdfDuplicateCount');
+  if (duplicateCounter) duplicateCounter.textContent = duplicate;
+  $('#pdfPendingCount').textContent = pendingRows.length;
+  $('#pdfResolvedCount').textContent = `${resolved} resolvida(s)`;
+  $('#pdfPendingBadge').textContent = `${pendingRows.length} pendência(s)`;
+
+  $('#pdfTotalALabel').textContent = `Total ${pdfState.labels.A}`;
+  $('#pdfTotalBLabel').textContent = `Total ${pdfState.labels.B}`;
+  $('#pdfTotalAValue').textContent = money.format(metrics.totalA);
+  $('#pdfTotalBValue').textContent = money.format(metrics.totalB);
+  $('#pdfTotalARecords').textContent = `${metrics.rowsA} lançamento(s) → ${metrics.consolidatedA ?? metrics.rowsA} NF(s)`;
+  $('#pdfTotalBRecords').textContent = `${metrics.rowsB} lançamento(s) → ${metrics.consolidatedB ?? metrics.rowsB} NF(s)`;
+  $('#pdfNetDifference').textContent = formatSignedMoney(metrics.netDifference);
+  $('#pdfOpenImpact').textContent = money.format(openImpact);
+  const netCard = $('#pdfNetCard');
+  netCard.classList.toggle('positive', metrics.netDifference > 0.009);
+  netCard.classList.toggle('negative', metrics.netDifference < -0.009);
+  $('#pdfNetDirection').textContent = Math.abs(metrics.netDifference) <= 0.009
+    ? 'Os totais gerais estão equilibrados'
+    : metrics.netDifference > 0
+      ? `${pdfState.labels.B} está maior que ${pdfState.labels.A}`
+      : `${pdfState.labels.A} está maior que ${pdfState.labels.B}`;
+
+  const decisionCard = $('#pdfDecisionCard');
+  decisionCard.classList.remove('decision-success','decision-warning','decision-danger');
+  if (!pendingRows.length) {
+    decisionCard.classList.add('decision-success');
+    $('#pdfDecisionIcon').textContent = '✓';
+    $('#pdfDecisionLevel').textContent = 'CONCILIADO';
+    $('#pdfDecisionTitle').textContent = 'Nenhuma pendência ficou em aberto.';
+    $('#pdfDecisionText').textContent = `Os registros foram conciliados entre ${pdfState.labels.A} e ${pdfState.labels.B}. ${grouped} NF(s) precisaram de soma automática e o valor pendente é R$ 0,00.`;
+    $('#pdfDecisionNext').innerHTML = '<strong>Próximo passo</strong><span>Salve ou imprima o relatório como evidência da conferência.</span>';
+  } else if (criticalRows.length) {
+    decisionCard.classList.add('decision-danger');
+    $('#pdfDecisionIcon').textContent = '!';
+    $('#pdfDecisionLevel').textContent = 'AÇÃO IMEDIATA';
+    $('#pdfDecisionTitle').textContent = `${criticalRows.length} ocorrência(s) crítica(s) antes do fechamento.`;
+    $('#pdfDecisionText').textContent = `Há ${pendingRows.length} pendência(s), com ${money.format(openImpact)} de impacto bruto a explicar. Comece pelas notas críticas e pelas ausentes.`;
+    $('#pdfDecisionNext').innerHTML = `<strong>Ordem recomendada</strong><span>1. Críticas e duplicadas · 2. Notas ausentes · 3. Valores divergentes${reviewRows ? ' · 4. Leituras com baixa confiança' : ''}</span>`;
+  } else {
+    decisionCard.classList.add('decision-warning');
+    $('#pdfDecisionIcon').textContent = '→';
+    $('#pdfDecisionLevel').textContent = 'REVISÃO NECESSÁRIA';
+    $('#pdfDecisionTitle').textContent = `${pendingRows.length} pendência(s) precisam de tratamento.`;
+    $('#pdfDecisionText').textContent = `O impacto bruto pendente é ${money.format(openImpact)}. Resolva primeiro as notas ausentes ou duplicadas e depois confirme os valores divergentes.`;
+    $('#pdfDecisionNext').innerHTML = '<strong>Próximo passo</strong><span>Abra cada NF/XML, corrija o lado incorreto e marque a ocorrência como resolvida.</span>';
+  }
+
+  const priorityList = $('#pdfPriorityList');
+  const ranked = [...pendingRows].sort((a,b) => ({critical:0,high:1,medium:2,ok:3}[a.priority]-({critical:0,high:1,medium:2,ok:3}[b.priority]) || b.impact-a.impact)).slice(0,5);
+  priorityList.innerHTML = ranked.length ? ranked.map((row) => {
+    const source = row.a || row.b;
+    return `<button class="priority-item priority-${row.priority}" type="button" data-focus-record="${escapeHtml(row.id)}"><span class="priority-marker"></span><span class="priority-copy"><strong>NF ${escapeHtml(source?.identifier || '—')} · ${escapeHtml(pdfStatusLabel(row.status, row.grouped))}</strong><small>${escapeHtml(row.action)}</small></span><b>${row.impact ? money.format(row.impact) : 'Revisar'}</b></button>`;
+  }).join('') : '<div class="priority-empty"><span>✓</span><strong>Nenhuma ação pendente</strong><small>Tudo o que precisava de revisão foi resolvido.</small></div>';
+
+  $('#pdfReconciliationText').textContent = Math.abs(metrics.netDifference) <= 0.009
+    ? 'Os totais gerais são iguais, mas ainda podem existir notas ausentes em lados opostos ou divergências que se compensam. Por isso, avalie também o impacto bruto e não apenas o total final.'
+    : `A diferença líquida entre os totais é ${money.format(Math.abs(metrics.netDifference))}. A composição abaixo mostra de onde esse valor vem.`;
+  $('#pdfReconciliationEquation').innerHTML = `
+    <span><small>Só no ${escapeHtml(pdfState.labels.A)}</small><b>− ${money.format(metrics.missingOnlyA)}</b></span>
+    <i>+</i>
+    <span><small>Divergências de valor</small><b>${formatSignedMoney(metrics.divergentSigned)}</b></span>
+    <i>+</i>
+    <span><small>Só no ${escapeHtml(pdfState.labels.B)}</small><b>+ ${money.format(metrics.missingOnlyB)}</b></span>
+    <i>=</i>
+    <span class="equation-total"><small>Diferença líquida</small><b>${formatSignedMoney(metrics.netDifference)}</b></span>`;
+}
+
+function pdfCompositionSideHtml(record, label) {
+  if (!record) return `<section class="composition-side composition-missing"><h5>${escapeHtml(label)}</h5><p>NF ausente neste relatório.</p></section>`;
+  const components = record.components?.length ? record.components : [record];
+  const items = components.map((item, index) => {
+    const meta = [item.date, item.series ? `Série ${item.series}` : '', item.fileName].filter(Boolean).join(' · ');
+    return `<li><span><strong>Lançamento ${index + 1}</strong><small>${escapeHtml(meta || 'Sem detalhes adicionais')}</small></span><b>${money.format(item.value || 0)}</b></li>`;
+  }).join('');
+  return `<section class="composition-side"><div class="composition-head"><h5>${escapeHtml(label)}</h5><span>${components.length} lançamento(s)</span><b>${money.format(record.value || 0)}</b></div><ol>${items}</ol></section>`;
 }
 
 function renderPdfTable() {
-  const tbody = $('#pdfResultsBody'); tbody.innerHTML = '';
-  const rows = pdfState.records.filter((row) => {
-    const filterOk = pdfState.filter === 'all' || (pdfState.filter === 'missing' && row.status.startsWith('missing')) || (pdfState.filter === 'duplicate' ? row.duplicate : row.status === pdfState.filter);
-    const searchable = normalize([row.a?.identifier,row.b?.identifier,row.a?.description,row.b?.description,row.a?.fileName,row.b?.fileName,row.reason].join(' '));
-    return filterOk && (!pdfState.search || searchable.includes(pdfState.search));
-  });
+  const tbody = $('#pdfResultsBody');
+  tbody.innerHTML = '';
+  const rows = filteredPdfRows();
   rows.forEach((row) => {
-    const source = row.a || row.b; const labelMap = { ok: 'Conferido', divergent: 'Valor divergente', 'missing-a': 'Não está no Rel. 1', 'missing-b': 'Não está no Rel. 2' };
-    const classMap = { ok: 'status-ok', divergent: 'status-divergent', 'missing-a': 'status-missing', 'missing-b': 'status-missing' };
+    const source = row.a || row.b;
     const supplierA = row.a?.description || '';
     const supplierB = row.b?.description || '';
     const supplierText = supplierA && supplierB && normalize(supplierA) !== normalize(supplierB) ? `${supplierA} / ${supplierB}` : supplierA || supplierB || 'Fornecedor não identificado';
-    const duplicateLabel = row.duplicate ? `<span class="status-badge status-duplicate">Nota repetida</span>` : '';
+    const statusClass = row.status === 'ok' ? 'status-ok' : row.status === 'divergent' ? 'status-divergent' : 'status-missing';
+    const extraBadges = `${row.grouped ? '<span class="status-badge status-grouped">Σ Lançamentos somados</span>' : ''}${row.duplicate ? '<span class="status-badge status-duplicate">Mesmo nº em grupos diferentes</span>' : ''}${row.exactComponentDuplicate ? '<span class="status-badge status-review">Repetição idêntica</span>' : ''}${row.lowConfidence ? `<span class="status-badge status-review">Leitura ${row.confidence}%</span>` : ''}`;
+    const valueA = row.a?.value == null ? '—' : money.format(row.a.value);
+    const valueB = row.b?.value == null ? '—' : money.format(row.b.value);
+    const countA = row.a?.componentCount || (row.a ? 1 : 0);
+    const countB = row.b?.componentCount || (row.b ? 1 : 0);
+    const deltaText = row.status === 'divergent' ? `Diferença: ${formatSignedMoney(row.signedDifference)}` : row.status === 'ok' ? (row.grouped ? 'Total consolidado igual nos dois lados' : 'Mesmo valor nos dois lados') : `Valor presente: ${money.format(row.impact)}`;
+    const detailText = [row.a?.date ? `${pdfState.labels.A}: ${row.a.date}` : '', row.b?.date ? `${pdfState.labels.B}: ${row.b.date}` : '', row.a?.fileName || '', row.b?.fileName || ''].filter(Boolean).join(' · ');
+    const compositionCount = countA + countB;
+    const detailsContent = row.grouped
+      ? `<div class="composition-grid">${pdfCompositionSideHtml(row.a, pdfState.labels.A)}${pdfCompositionSideHtml(row.b, pdfState.labels.B)}</div>`
+      : `<span>${escapeHtml(detailText || 'Sem detalhes adicionais')}</span>`;
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><span class="status-badge ${classMap[row.status]}">${labelMap[row.status]}</span>${duplicateLabel}</td><td><strong>${escapeHtml(source?.identifier || '—')}</strong></td><td><span class="comparison-reason">${escapeHtml(row.reason || '')}</span><span class="comparison-supplier">${escapeHtml(supplierText)}</span></td><td>${escapeHtml(row.a?.date || '—')}</td><td>${escapeHtml(row.b?.date || '—')}</td><td class="align-right">${row.a?.value == null ? '—' : money.format(row.a.value)}</td><td class="align-right">${row.b?.value == null ? '—' : money.format(row.b.value)}</td><td><span class="file-name">${escapeHtml([row.a?.fileName,row.b?.fileName].filter(Boolean).join(' / '))}</span></td>`;
+    tr.dataset.recordId = row.id;
+    tr.classList.toggle('decision-row-resolved', row.resolved);
+    tr.innerHTML = `
+      <td><span class="priority-badge priority-${row.priority}">${escapeHtml(pdfPriorityLabel(row.priority))}</span></td>
+      <td><span class="status-badge ${statusClass}">${escapeHtml(pdfStatusLabel(row.status, row.grouped))}</span>${extraBadges}<strong class="decision-nf">NF ${escapeHtml(source?.identifier || '—')}</strong><span class="decision-supplier" title="${escapeHtml(supplierText)}">${escapeHtml(supplierText)}</span>${source?.series ? `<small class="decision-series">Série ${escapeHtml(source.series)}</small>` : ''}</td>
+      <td><div class="value-compare"><span><small>${escapeHtml(pdfState.labels.A)}</small><b>${valueA}</b>${countA > 1 ? `<em>${countA} lançamentos somados</em>` : ''}</span><span class="value-arrow">→</span><span><small>${escapeHtml(pdfState.labels.B)}</small><b>${valueB}</b>${countB > 1 ? `<em>${countB} lançamentos somados</em>` : ''}</span></div><span class="value-delta">${escapeHtml(deltaText)}</span><details class="record-details ${row.grouped ? 'composition-details' : ''}"><summary>${row.grouped ? `Ver composição (${compositionCount} lançamentos)` : 'Ver datas e arquivos'}</summary>${detailsContent}</details></td>
+      <td class="align-right"><strong class="impact-value">${row.impact ? money.format(row.impact) : '—'}</strong></td>
+      <td><span class="action-text">${escapeHtml(row.action)}</span></td>
+      <td><label class="resolution-check"><input type="checkbox" data-resolve-record="${escapeHtml(row.id)}" ${row.resolved ? 'checked' : ''}/><span>${row.resolved ? 'Resolvida' : 'Pendente'}</span></label><textarea class="resolution-note" data-note-record="${escapeHtml(row.id)}" rows="2" placeholder="Anotação: o que foi verificado ou corrigido">${escapeHtml(row.note || '')}</textarea></td>`;
     tbody.appendChild(tr);
   });
-  $('#pdfEmptyResults').classList.toggle('hidden', rows.length > 0); tbody.parentElement.classList.toggle('hidden', rows.length === 0);
+  $('#pdfEmptyResults').classList.toggle('hidden', rows.length > 0);
+  tbody.parentElement.classList.toggle('hidden', rows.length === 0);
+}
+
+$('#pdfResultsBody').addEventListener('change', (event) => {
+  const checkbox = event.target.closest('[data-resolve-record]');
+  if (!checkbox) return;
+  const row = pdfState.records.find((record) => record.id === checkbox.dataset.resolveRecord);
+  if (!row) return;
+  row.resolved = checkbox.checked;
+  refreshPdfDecisionDashboard();
+  if (['pending','resolved','critical'].includes(pdfState.filter)) renderPdfTable();
+  else {
+    const tr = checkbox.closest('tr');
+    tr?.classList.toggle('decision-row-resolved', row.resolved);
+    const label = checkbox.parentElement?.querySelector('span');
+    if (label) label.textContent = row.resolved ? 'Resolvida' : 'Pendente';
+  }
+});
+
+$('#pdfResultsBody').addEventListener('input', (event) => {
+  const field = event.target.closest('[data-note-record]');
+  if (!field) return;
+  const row = pdfState.records.find((record) => record.id === field.dataset.noteRecord);
+  if (row) row.note = field.value;
+});
+
+$('#pdfPriorityList').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-focus-record]');
+  if (!button) return;
+  const row = pdfState.records.find((record) => record.id === button.dataset.focusRecord);
+  if (!row) return;
+  pdfState.filter = 'all';
+  pdfState.search = normalize((row.a || row.b)?.identifier || '');
+  $('#pdfSearchInput').value = (row.a || row.b)?.identifier || '';
+  $$('[data-pdf-filter]').forEach((item) => item.classList.toggle('active', item.dataset.pdfFilter === 'all'));
+  renderPdfTable();
+  $('.table-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+function buildPdfExecutiveSummary() {
+  if (!pdfState.records.length || !pdfState.metrics) return '';
+  const metrics = pdfState.metrics;
+  const pending = pdfState.records.filter((row) => row.needsAction && !row.resolved);
+  const critical = pending.filter((row) => row.priority === 'critical');
+  const openImpact = pending.reduce((sum, row) => sum + row.impact, 0);
+  const top = [...pending].sort((a,b) => ({critical:0,high:1,medium:2,ok:3}[a.priority]-({critical:0,high:1,medium:2,ok:3}[b.priority]) || b.impact-a.impact)).slice(0,5);
+  const lines = [
+    'CONFERINHO — RESUMO DA CONFERÊNCIA',
+    `${pdfState.labels.A} x ${pdfState.labels.B}`,
+    '',
+    `Total ${pdfState.labels.A}: ${money.format(metrics.totalA)} (${metrics.rowsA} lançamentos → ${metrics.consolidatedA ?? metrics.rowsA} NFs)`,
+    `Total ${pdfState.labels.B}: ${money.format(metrics.totalB)} (${metrics.rowsB} lançamentos → ${metrics.consolidatedB ?? metrics.rowsB} NFs)`,
+    `NFs com lançamentos somados: ${pdfState.records.filter((row) => row.grouped).length}`, 
+    `Diferença líquida: ${formatSignedMoney(metrics.netDifference)}`,
+    `Pendências abertas: ${pending.length}`,
+    `Ocorrências críticas: ${critical.length}`,
+    `Valor que exige conferência: ${money.format(openImpact)}`,
+    ''
+  ];
+  if (!pending.length) lines.push('Conclusão: relatórios conciliados, sem pendências abertas.');
+  else {
+    lines.push('PRIORIDADES:');
+    top.forEach((row, index) => lines.push(`${index + 1}. NF ${(row.a || row.b)?.identifier || '—'} — ${pdfStatusLabel(row.status, row.grouped)} — ${row.impact ? money.format(row.impact) : 'revisar leitura'}. ${row.action}`));
+  }
+  return lines.join('\n');
+}
+
+async function copyPdfExecutiveSummary() {
+  const text = buildPdfExecutiveSummary();
+  if (!text) return showToast('Faça uma comparação antes de copiar o resumo.', true);
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('Resumo executivo copiado.');
+  } catch {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    textarea.remove();
+    showToast('Resumo executivo copiado.');
+  }
+}
+
+
+function pdfCompositionText(record) {
+  if (!record) return '';
+  const components = record.components?.length ? record.components : [record];
+  return components.map((item, index) => `${index + 1}) ${Number(item.value || 0).toFixed(2).replace('.', ',')} | ${item.date || 'sem data'} | ${item.series ? `série ${item.series}` : 'sem série'} | ${item.fileName || ''}`).join(' ; ');
 }
 
 function exportPdfCsv() {
-  if (!pdfState.records.length) return showToast('Faça uma comparação antes de exportar.', true);
-  const rows = [['Situação','Número da nota','Resultado da comparação','Fornecedor Relatório 1','Fornecedor Relatório 2','Data Relatório 1','Data Relatório 2','Valor Relatório 1','Valor Relatório 2','Diferença','Nota repetida','Arquivo Relatório 1','Arquivo Relatório 2']];
-  pdfState.records.forEach((r) => rows.push([r.status,r.a?.identifier||r.b?.identifier||'',r.reason||'',r.a?.description||'',r.b?.description||'',r.a?.date||'',r.b?.date||'',r.a?.value?.toFixed(2).replace('.',',')||'',r.b?.value?.toFixed(2).replace('.',',')||'',r.difference?.toFixed(2).replace('.',',')||'',r.duplicate?'Sim':'Não',r.a?.fileName||'',r.b?.fileName||'']));
-  downloadCsv(`conferinho-comparacao-${new Date().toISOString().slice(0,10)}.csv`, rows);
+  if (!pdfState.records.length || !pdfState.metrics) return showToast('Faça uma comparação antes de exportar.', true);
+  const m = pdfState.metrics;
+  const pending = pdfState.records.filter((row) => row.needsAction && !row.resolved);
+  const rows = [
+    ['CONFERINHO — PLANO DE AÇÃO DA CONFERÊNCIA'],
+    ['Comparação', `${pdfState.labels.A} x ${pdfState.labels.B}`],
+    [`Total ${pdfState.labels.A}`, m.totalA.toFixed(2).replace('.',',')],
+    [`Total ${pdfState.labels.B}`, m.totalB.toFixed(2).replace('.',',')],
+    ['Diferença líquida', m.netDifference.toFixed(2).replace('.',',')],
+    ['Pendências abertas', pending.length],
+    ['Valor que exige conferência', pending.reduce((sum,row)=>sum+row.impact,0).toFixed(2).replace('.',',')],
+    [],
+    ['Prioridade','Situação','Número da NF',`Valor consolidado ${pdfState.labels.A}`,`Valor consolidado ${pdfState.labels.B}`,`Lançamentos ${pdfState.labels.A}`,`Lançamentos ${pdfState.labels.B}`,'NF agrupada','Composição Relatório 1','Composição Relatório 2','Impacto','Diferença assinada','Fornecedor / descrição','Próxima ação','Andamento','Anotação','Confiança da leitura','Possível repetição para revisar',`Data ${pdfState.labels.A}`,`Data ${pdfState.labels.B}`,`Arquivo ${pdfState.labels.A}`,`Arquivo ${pdfState.labels.B}`]
+  ];
+  pdfState.records.forEach((row) => rows.push([
+    pdfPriorityLabel(row.priority),
+    pdfStatusLabel(row.status, row.grouped),
+    row.a?.identifier || row.b?.identifier || '',
+    row.a?.value?.toFixed(2).replace('.',',') || '',
+    row.b?.value?.toFixed(2).replace('.',',') || '',
+    row.a?.componentCount || (row.a ? 1 : 0),
+    row.b?.componentCount || (row.b ? 1 : 0),
+    row.grouped ? 'Sim' : 'Não',
+    pdfCompositionText(row.a),
+    pdfCompositionText(row.b),
+    row.impact?.toFixed(2).replace('.',',') || '0,00',
+    row.signedDifference?.toFixed(2).replace('.',',') || '0,00',
+    row.a?.description || row.b?.description || '',
+    row.action,
+    row.resolved ? 'Resolvida' : row.needsAction ? 'Pendente' : 'Conferida',
+    row.note || '',
+    `${row.confidence}%`,
+    row.duplicate || row.exactComponentDuplicate ? 'Sim' : 'Não',
+    row.a?.date || '',
+    row.b?.date || '',
+    row.a?.fileName || '',
+    row.b?.fileName || ''
+  ]));
+  downloadCsv(`conferinho-plano-de-acao-${new Date().toISOString().slice(0,10)}.csv`, rows);
 }
 
 function resetPdf() {
-  pdfState.filesA=[];pdfState.filesB=[];pdfState.records=[];pdfState.filter='all';pdfState.search='';
-  $('#reportAInput').value='';$('#reportBInput').value='';$('#reportAFileList').innerHTML='';$('#reportBFileList').innerHTML='';$('#pdfSearchInput').value='';$('#pdfResults').classList.add('hidden');$('#pdfProgress').classList.add('hidden');$('#compareBtn').disabled=true;$('#pdfStatusHint').textContent='Estou esperando pelo menos um PDF em cada campo.';showToast('Comparação limpa.');
+  pdfState.filesA=[];pdfState.filesB=[];pdfState.records=[];pdfState.filter='all';pdfState.search='';pdfState.metrics=null;pdfState.labels={A:'Relatório 1',B:'Relatório 2'};
+  $('#reportAInput').value='';$('#reportBInput').value='';$('#reportAFileList').innerHTML='';$('#reportBFileList').innerHTML='';$('#reportALabel').value='Relatório 1';$('#reportBLabel').value='Relatório 2';$('#pdfSearchInput').value='';$('#pdfResults').classList.add('hidden');$('#pdfProgress').classList.add('hidden');$('#compareBtn').disabled=true;$('#pdfStatusHint').textContent='Estou esperando pelo menos um PDF em cada campo.';showToast('Comparação limpa.');
 }
+
 
 bindDropzone($('#nfseDropzone'), $('#nfseInput'), (f) => /\.xml$/i.test(f.name), setNfseFiles);
 function setNfseFiles(files) {
@@ -601,7 +1084,7 @@ function resetNfse(){nfseState.files=[];nfseState.notes=[];nfseState.warnings=[]
 // SOMADOR DE NFs — imagens e PDFs com revisão antes da soma
 // -----------------------------------------------------------------------------
 const SUM_ACCEPTED_FILE = /\.(pdf|png|jpe?g|webp)$/i;
-const SUM_MONEY_PATTERN = String.raw`(?:R\$\s*)?(?:\d{1,3}(?:[.\s]\d{3})+|\d+)[,.]\d{2}`;
+const SUM_MONEY_PATTERN = String.raw`(?:R\$\s*)?(?:\d{1,3}(?:[.,\s]\d{3})+|\d+)[,.]\d{2}`;
 const SUM_NF_PATTERN = String.raw`(?:\bNF(?:-?E|S-?E)?\b|\bNFS(?:-?E)?\b|\bNOTA(?:\s+FISCAL)?\b|\bN[ÚU]MERO\s+(?:DA\s+)?NOTA\b)\s*(?:N[º°O.]?\s*)?[:#-]?\s*([0-9][0-9.\/-]{1,18})`;
 
 let sumPasteCounter = 0;
@@ -800,6 +1283,191 @@ function updateSumProgress(ratio, detail) {
   $('#sumProgressDetail').textContent = detail;
 }
 
+let sumOcrWorkerPromise = null;
+let sumOcrProgressHandler = null;
+
+async function getSumOcrWorker() {
+  if (!window.Tesseract) throw new Error('A biblioteca de OCR não carregou. Atualize a página com internet ativa.');
+  if (!sumOcrWorkerPromise) {
+    sumOcrWorkerPromise = Tesseract.createWorker('por', 1, {
+      logger: (event) => { if (sumOcrProgressHandler) sumOcrProgressHandler(event); }
+    }).catch((error) => {
+      sumOcrWorkerPromise = null;
+      throw error;
+    });
+  }
+  return sumOcrWorkerPromise;
+}
+
+async function recognizeSumCanvas(canvas, progressHandler, pageSegmentation = '6') {
+  const worker = await getSumOcrWorker();
+  sumOcrProgressHandler = progressHandler;
+  try {
+    await worker.setParameters({
+      tessedit_pageseg_mode: String(pageSegmentation),
+      preserve_interword_spaces: '1',
+      user_defined_dpi: '300'
+    });
+    return await worker.recognize(canvas);
+  } finally {
+    sumOcrProgressHandler = null;
+  }
+}
+
+function sumOtsuThreshold(gray) {
+  const histogram = new Uint32Array(256);
+  gray.forEach((value) => { histogram[value] += 1; });
+  const total = gray.length;
+  let sum = 0;
+  for (let index = 0; index < 256; index++) sum += index * histogram[index];
+  let backgroundWeight = 0;
+  let backgroundSum = 0;
+  let bestVariance = -1;
+  let bestThreshold = 180;
+  for (let threshold = 0; threshold < 256; threshold++) {
+    backgroundWeight += histogram[threshold];
+    if (!backgroundWeight) continue;
+    const foregroundWeight = total - backgroundWeight;
+    if (!foregroundWeight) break;
+    backgroundSum += threshold * histogram[threshold];
+    const backgroundMean = backgroundSum / backgroundWeight;
+    const foregroundMean = (sum - backgroundSum) / foregroundWeight;
+    const variance = backgroundWeight * foregroundWeight * (backgroundMean - foregroundMean) ** 2;
+    if (variance > bestVariance) { bestVariance = variance; bestThreshold = threshold; }
+  }
+  return Math.max(125, Math.min(220, bestThreshold));
+}
+
+function isolateSumTableLines(binary, width, height) {
+  const lineMask = new Uint8Array(binary.length);
+  const minimumHorizontalRun = Math.max(60, Math.round(width * 0.025));
+  const minimumVerticalRun = Math.max(45, Math.round(height * 0.04));
+  let horizontalSegments = 0;
+  let verticalSegments = 0;
+
+  for (let y = 0; y < height; y++) {
+    let start = -1;
+    for (let x = 0; x <= width; x++) {
+      const dark = x < width && binary[y * width + x];
+      if (dark && start < 0) start = x;
+      if ((!dark || x === width) && start >= 0) {
+        const end = x;
+        if (end - start >= minimumHorizontalRun) {
+          horizontalSegments += 1;
+          for (let xx = start; xx < end; xx++) lineMask[y * width + xx] = 1;
+        }
+        start = -1;
+      }
+    }
+  }
+
+  for (let x = 0; x < width; x++) {
+    let start = -1;
+    for (let y = 0; y <= height; y++) {
+      const dark = y < height && binary[y * width + x];
+      if (dark && start < 0) start = y;
+      if ((!dark || y === height) && start >= 0) {
+        const end = y;
+        if (end - start >= minimumVerticalRun) {
+          verticalSegments += 1;
+          for (let yy = start; yy < end; yy++) lineMask[yy * width + x] = 1;
+        }
+        start = -1;
+      }
+    }
+  }
+
+  const withoutLines = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index++) withoutLines[index] = binary[index] && !lineMask[index] ? 1 : 0;
+  return {
+    binary: withoutLines,
+    tableLike: horizontalSegments >= 3 || verticalSegments >= 3
+  };
+}
+
+function closeSumBinary(binary, width, height) {
+  const dilated = new Uint8Array(binary.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!binary[y * width + x]) continue;
+      for (let yy = y; yy <= Math.min(height - 1, y + 1); yy++) {
+        for (let xx = x; xx <= Math.min(width - 1, x + 1); xx++) dilated[yy * width + xx] = 1;
+      }
+    }
+  }
+  const closed = new Uint8Array(binary.length);
+  for (let y = 0; y < height - 1; y++) {
+    for (let x = 0; x < width - 1; x++) {
+      const position = y * width + x;
+      if (dilated[position] && dilated[position + 1] && dilated[position + width] && dilated[position + width + 1]) closed[position] = 1;
+    }
+  }
+  return closed;
+}
+
+function preprocessSumCanvas(source, sourceWidth, sourceHeight) {
+  const longest = Math.max(sourceWidth, sourceHeight);
+  const scale = Math.max(1, Math.min(4, 3600 / Math.max(longest, 1)));
+  const width = Math.max(1, Math.round(sourceWidth * scale));
+  const height = Math.max(1, Math.round(sourceHeight * scale));
+  const originalCanvas = document.createElement('canvas');
+  originalCanvas.width = width;
+  originalCanvas.height = height;
+  const originalContext = originalCanvas.getContext('2d', { willReadFrequently: true });
+  originalContext.imageSmoothingEnabled = true;
+  originalContext.imageSmoothingQuality = 'high';
+  originalContext.drawImage(source, 0, 0, width, height);
+
+  const imageData = originalContext.getImageData(0, 0, width, height);
+  const pixels = imageData.data;
+  const gray = new Uint8Array(width * height);
+  for (let index = 0, pixel = 0; index < pixels.length; index += 4, pixel++) {
+    gray[pixel] = Math.round(pixels[index] * 0.299 + pixels[index + 1] * 0.587 + pixels[index + 2] * 0.114);
+  }
+
+  const threshold = sumOtsuThreshold(gray);
+  const binary = new Uint8Array(gray.length);
+  for (let index = 0; index < gray.length; index++) binary[index] = gray[index] < threshold ? 1 : 0;
+  const isolated = isolateSumTableLines(binary, width, height);
+  const cleaned = closeSumBinary(isolated.binary, width, height);
+
+  const processedCanvas = document.createElement('canvas');
+  processedCanvas.width = width;
+  processedCanvas.height = height;
+  const processedContext = processedCanvas.getContext('2d');
+  const output = processedContext.createImageData(width, height);
+  for (let position = 0; position < cleaned.length; position++) {
+    const value = cleaned[position] ? 0 : 255;
+    const outputIndex = position * 4;
+    output.data[outputIndex] = value;
+    output.data[outputIndex + 1] = value;
+    output.data[outputIndex + 2] = value;
+    output.data[outputIndex + 3] = 255;
+  }
+  processedContext.putImageData(output, 0, 0);
+  return { originalCanvas, processedCanvas, tableLike: isolated.tableLike };
+}
+
+async function loadSumImage(file) {
+  if ('createImageBitmap' in window) return createImageBitmap(file);
+  const url = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    return image;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function sumRecognizedTextScore(text) {
+  const normalized = normalize(text);
+  const moneyCount = sumMoneyCandidates(text).length;
+  const dateCount = (String(text || '').match(/\b\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}\b/g) || []).length;
+  return normalized.length + moneyCount * 80 + dateCount * 30;
+}
+
 async function extractSumPdfPages(file, fileIndex) {
   if (!window.pdfjsLib) throw new Error('A biblioteca de PDF não carregou. Atualize a página com internet ativa.');
   const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
@@ -811,20 +1479,19 @@ async function extractSumPdfPages(file, fileIndex) {
     const content = await page.getTextContent();
     let text = pdfItemsToLines(content.items).join('\n');
     let method = 'Texto do PDF';
-    const moneyCount = (text.match(new RegExp(SUM_MONEY_PATTERN, 'g')) || []).length;
+    const moneyCount = sumMoneyCandidates(text).length;
     if ((normalize(text).length < 45 || moneyCount === 0) && window.Tesseract) {
-      const viewport = page.getViewport({ scale: 2 });
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.ceil(viewport.width);
-      canvas.height = Math.ceil(viewport.height);
-      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-      const result = await Tesseract.recognize(canvas, 'por', {
-        logger: (event) => {
-          if (event.status === 'recognizing text') updateSumProgress(baseProgress, `${file.name} — OCR da página ${pageNumber}: ${Math.round((event.progress || 0) * 100)}%`);
-        }
-      });
-      if (normalize(result.data.text).length > normalize(text).length) text = result.data.text;
-      method = 'OCR da página';
+      const viewport = page.getViewport({ scale: 2.2 });
+      const sourceCanvas = document.createElement('canvas');
+      sourceCanvas.width = Math.ceil(viewport.width);
+      sourceCanvas.height = Math.ceil(viewport.height);
+      await page.render({ canvasContext: sourceCanvas.getContext('2d'), viewport }).promise;
+      const prepared = preprocessSumCanvas(sourceCanvas, sourceCanvas.width, sourceCanvas.height);
+      const result = await recognizeSumCanvas(prepared.processedCanvas, (event) => {
+        if (event.status === 'recognizing text') updateSumProgress(baseProgress, `${file.name} — OCR da página ${pageNumber}: ${Math.round((event.progress || 0) * 100)}%`);
+      }, prepared.tableLike ? '6' : '3');
+      if (sumRecognizedTextScore(result.data.text) > sumRecognizedTextScore(text)) text = result.data.text;
+      method = prepared.tableLike ? 'OCR de tabela (grade removida)' : 'OCR da página';
     }
     pages.push({ page: pageNumber, text, method });
     await yieldBrowser();
@@ -833,16 +1500,32 @@ async function extractSumPdfPages(file, fileIndex) {
 }
 
 async function extractSumImage(file, fileIndex) {
-  if (!window.Tesseract) throw new Error('A biblioteca de OCR não carregou. Atualize a página com internet ativa.');
-  const result = await Tesseract.recognize(file, 'por', {
-    logger: (event) => {
-      if (event.status === 'recognizing text') {
-        const overall = (fileIndex + (event.progress || 0)) / Math.max(sumState.files.length, 1);
-        updateSumProgress(overall, `${file.name} — reconhecendo texto: ${Math.round((event.progress || 0) * 100)}%`);
-      }
+  const image = await loadSumImage(file);
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+  const prepared = preprocessSumCanvas(image, width, height);
+  if (typeof image.close === 'function') image.close();
+
+  const progress = (event) => {
+    if (event.status === 'recognizing text') {
+      const overall = (fileIndex + (event.progress || 0)) / Math.max(sumState.files.length, 1);
+      updateSumProgress(overall, `${file.name} — lendo linhas e valores: ${Math.round((event.progress || 0) * 100)}%`);
     }
-  });
-  return [{ page: 1, text: result.data.text || '', method: 'OCR da imagem' }];
+  };
+
+  const first = await recognizeSumCanvas(prepared.processedCanvas, progress, prepared.tableLike ? '6' : '3');
+  let text = first.data.text || '';
+  let method = prepared.tableLike ? 'OCR de tabela (grade removida)' : 'OCR da imagem tratada';
+
+  if (sumMoneyCandidates(text).length === 0 || normalize(text).length < 25) {
+    updateSumProgress(fileIndex / Math.max(sumState.files.length, 1), `${file.name} — fazendo uma segunda leitura`);
+    const fallback = await recognizeSumCanvas(prepared.originalCanvas, progress, '3');
+    if (sumRecognizedTextScore(fallback.data.text) > sumRecognizedTextScore(text)) {
+      text = fallback.data.text || text;
+      method = 'OCR alternativo da imagem';
+    }
+  }
+  return [{ page: 1, text, method }];
 }
 
 function cleanSumInvoiceNumber(raw) {
@@ -899,13 +1582,80 @@ function sumExplicitMatches(line) {
   });
 }
 
+
+function isSumReportTable(text) {
+  const header = normalize(text).replace(/[º°]/g, 'o').replace(/[^a-z0-9]+/g, ' ');
+  const hasInvoiceColumn = /\b(?:no ?nf|numero (?:da )?(?:nota|nf)|nf e?)\b/.test(header) || header.includes('nonf');
+  const hasTotalColumn = /\b(?:total nf|valor total|total da nf|total nota)\b/.test(header);
+  return hasInvoiceColumn && hasTotalColumn;
+}
+
+function parseSumReportTableRow(line, tableMode) {
+  const source = String(line || '');
+  const allValues = sumMoneyCandidates(source);
+  if (!allValues.length) return null;
+  const selectedValue = allValues[allValues.length - 1];
+
+  const prefixBeforeValue = source.slice(0, selectedValue.index);
+  const dateMatches = [...prefixBeforeValue.matchAll(/\b\d{1,2}\D{1,3}\d{1,2}\D{1,3}\d{2,4}\b/g)];
+  const dateMatch = dateMatches[dateMatches.length - 1];
+  const yearMatches = [...prefixBeforeValue.matchAll(/\b20\d{2}\b/g)];
+  const yearMatch = yearMatches[yearMatches.length - 1];
+  const dateStart = dateMatch?.index ?? (yearMatch?.index != null ? Math.max(0, yearMatch.index - 9) : selectedValue.index);
+  const beforeDate = source.slice(0, dateStart);
+  const compactBeforeDate = beforeDate.replace(/[|,;]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const documentMatches = [...compactBeforeDate.matchAll(/\b\d{11,14}\b/g)];
+  const lastDocument = documentMatches[documentMatches.length - 1];
+  const invoiceArea = lastDocument && lastDocument.index != null
+    ? compactBeforeDate.slice(lastDocument.index + lastDocument[0].length)
+    : compactBeforeDate;
+  const invoiceTokens = [...invoiceArea.matchAll(/\b\d{2,15}\b/g)]
+    .map((match) => cleanSumInvoiceNumber(match[0]))
+    .filter(Boolean);
+  const nf = lastDocument ? invoiceTokens[0] : invoiceTokens[invoiceTokens.length - 1];
+  if (!nf) return null;
+
+  const afterDate = normalize(source.slice(dateStart));
+  const stateAfterDate = /\b(?:ac|al|ap|am|ba|ce|df|es|go|ma|mt|ms|mg|pa|pb|pr|pe|pi|rj|rn|rs|ro|rr|sc|sp|se|to)\b/.test(afterDate);
+  const rowLooksTabular = documentMatches.length > 0 && Boolean(dateMatch || yearMatch) && stateAfterDate;
+  if (!tableMode && !rowLooksTabular) return null;
+
+  return {
+    nf,
+    value: selectedValue.value,
+    note: tableMode
+      ? 'Lido diretamente das colunas Nº NF e Total NF'
+      : 'Linha de relatório identificada por CNPJ, NF, data, UF e valor',
+    raw: source.slice(0, 260)
+  };
+}
+
 function parseSumPageText(text, fileName, page, method) {
   const lines = String(text || '').split(/\r?\n/).map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
   const records = [];
+  const tableMode = isSumReportTable(text);
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index];
     const normalizedLine = normalize(line);
     if (/\b(total geral|subtotal geral|soma total|quantidade de notas|qtd.? notas)\b/.test(normalizedLine)) continue;
+
+    const tableRecord = parseSumReportTableRow(line, tableMode);
+    if (tableRecord) {
+      records.push({
+        id: `sum-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        nf: tableRecord.nf,
+        value: tableRecord.value,
+        fileName,
+        page,
+        method,
+        include: true,
+        status: 'confirmed',
+        note: tableRecord.note,
+        raw: tableRecord.raw
+      });
+      continue;
+    }
 
     const allMatches = sumExplicitMatches(line);
 

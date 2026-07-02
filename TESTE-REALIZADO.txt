@@ -1,0 +1,15 @@
+TESTE DA CONSOLIDAÇÃO
+
+Cenário testado no lado Domínio:
+- NF 896442 — R$ 1.496,53
+- NF 896442 — R$ 224,37
+- NF 896442 — R$ 365,40
+
+Resultado consolidado: R$ 2.086,30
+Quantidade de componentes: 3
+
+Cenário 1 — SEFAZ com R$ 2.086,30
+Resultado esperado e obtido: Conferida após soma.
+
+Cenário 2 — SEFAZ com R$ 2.000,00
+Resultado esperado e obtido: Divergente após soma, diferença de R$ 86,30.
