@@ -91,49 +91,121 @@
       </section>
       <section id="pdfProgress" class="panel progress-panel hidden" aria-live="polite"><div class="progress-avatar">🤖</div><div class="progress-content"><div class="progress-head"><strong id="pdfProgressTitle">Lendo relatórios...</strong><span id="pdfProgressPercent">0%</span></div><div class="progress-track"><div id="pdfProgressBar" class="progress-bar"></div></div><p id="pdfProgressDetail">Preparando arquivos</p></div></section>
       <section id="pdfResults" class="results-section hidden">
-        <div class="results-header"><div><span class="eyebrow"><span class="eyebrow-dot"></span> DIAGNÓSTICO DA ESCRITURAÇÃO</span><h2>O Domínio está reproduzindo a base da SEFAZ?</h2><p id="pdfResultSubtitle"></p></div><div class="results-actions"><button class="button button-ghost" id="pdfCopySummaryBtn">Copiar resumo</button><button class="button button-ghost" id="pdfExportBtn">Exportar plano de ação</button><button class="button button-secondary" id="pdfPrintBtn">Imprimir</button></div></div>
-
-        <div class="entry-result-guide">
-          <div class="result-guide-title"><strong>Como ler o diagnóstico</strong><span>Toda NF da SEFAZ precisa ser encontrada no Domínio com o valor correto.</span></div>
-          <div class="result-guide-items">
-            <span class="guide-ok"><b>✓</b><strong>Escriturada corretamente</strong><small>A NF da SEFAZ bateu no Domínio</small></span>
-            <span class="guide-warning"><b>≠</b><strong>Valor incorreto</strong><small>A NF existe, mas o Domínio não bate</small></span>
-            <span class="guide-danger"><b>!</b><strong>Não escriturada</strong><small>Consta na SEFAZ e falta no Domínio</small></span>
-            <span class="guide-grouped"><b>Σ</b><strong>Correta após soma</strong><small>Os lançamentos do Domínio foram consolidados</small></span>
+        <div class="results-header simplified-results-header">
+          <div>
+            <span class="eyebrow"><span class="eyebrow-dot"></span> RESULTADO DA CONCILIAÇÃO</span>
+            <h2>O que precisa ser corrigido no Domínio?</h2>
+            <p id="pdfResultSubtitle"></p>
+          </div>
+          <div class="results-actions">
+            <button class="button button-ghost" id="pdfCopySummaryBtn">Copiar resumo</button>
+            <button class="button button-ghost" id="pdfExportBtn">Exportar relatório</button>
+            <button class="button button-secondary" id="pdfPrintBtn">Imprimir</button>
           </div>
         </div>
 
-        <div class="decision-layout">
-          <article class="panel decision-card" id="pdfDecisionCard">
-            <div class="decision-card-head"><span class="decision-icon" id="pdfDecisionIcon">!</span><span class="decision-level" id="pdfDecisionLevel">ANALISANDO</span></div>
+        <div class="simple-overview-grid">
+          <article class="panel decision-card simple-decision-card" id="pdfDecisionCard">
+            <div class="decision-card-head">
+              <span class="decision-icon" id="pdfDecisionIcon">!</span>
+              <span class="decision-level" id="pdfDecisionLevel">ANALISANDO</span>
+            </div>
             <h3 id="pdfDecisionTitle">Diagnóstico da escrituração</h3>
             <p id="pdfDecisionText"></p>
+
+            <div class="essential-kpis">
+              <button class="essential-kpi essential-pending" type="button" data-pdf-filter="pending">
+                <span>Para resolver</span>
+                <strong id="pdfPendingCount">0</strong>
+                <small id="pdfResolvedCount">0 resolvidas</small>
+              </button>
+              <button class="essential-kpi essential-ok" type="button" data-pdf-filter="ok">
+                <span>Conferidas</span>
+                <strong id="pdfOkCount">0</strong>
+                <small>sem correção</small>
+              </button>
+              <div class="essential-kpi essential-coverage" id="pdfNetCard">
+                <span>Base correta</span>
+                <strong id="pdfNetDifference">0%</strong>
+                <small id="pdfNetDirection">0 de 0 NFs</small>
+              </div>
+              <div class="essential-kpi essential-impact">
+                <span>Valor a investigar</span>
+                <strong id="pdfOpenImpact">R$ 0,00</strong>
+                <small>pendências abertas</small>
+              </div>
+            </div>
+
             <div class="decision-next" id="pdfDecisionNext"></div>
           </article>
-          <article class="panel priority-panel">
-            <div class="priority-panel-head"><div><span class="panel-kicker">COMECE POR AQUI</span><h3>Pendências que impedem o fechamento</h3></div><span id="pdfPendingBadge" class="pending-badge">0 pendências</span></div>
-            <div id="pdfPriorityList" class="priority-list"></div>
+
+          <article class="panel how-to-panel">
+            <span class="panel-kicker">COMO USAR ESTE RESULTADO</span>
+            <h3>Resolva uma NF por vez</h3>
+            <ol class="simple-steps">
+              <li><b>1</b><span><strong>Veja o problema</strong><small>Ausente, valor diferente ou lançamento extra.</small></span></li>
+              <li><b>2</b><span><strong>Compare SEFAZ e Domínio</strong><small>Os dois valores aparecem juntos na mesma ocorrência.</small></span></li>
+              <li><b>3</b><span><strong>Faça a correção</strong><small>Siga a orientação “O que fazer agora”.</small></span></li>
+              <li><b>4</b><span><strong>Registre e conclua</strong><small>Anote a correção e marque a NF como resolvida.</small></span></li>
+            </ol>
           </article>
         </div>
 
-        <div class="financial-grid">
-          <article class="financial-card"><span id="pdfTotalALabel">Base oficial da SEFAZ</span><strong id="pdfTotalAValue">R$ 0,00</strong><small id="pdfTotalARecords">0 NFs oficiais</small></article>
-          <article class="financial-card"><span id="pdfTotalBLabel">Total escriturado no Domínio</span><strong id="pdfTotalBValue">R$ 0,00</strong><small id="pdfTotalBRecords">0 lançamentos</small></article>
-          <article class="financial-card coverage" id="pdfNetCard"><span>Conciliação da base SEFAZ</span><strong id="pdfNetDifference">0%</strong><small id="pdfNetDirection">0 de 0 NFs corretas</small></article>
-          <article class="financial-card risk"><span>Valor ainda sem explicação</span><strong id="pdfOpenImpact">R$ 0,00</strong><small>impacto bruto das pendências abertas</small></article>
-        </div>
+        <section class="panel cases-panel">
+          <div class="cases-panel-head">
+            <div>
+              <span class="panel-kicker">LISTA DE CONFERÊNCIA</span>
+              <h3>Notas para analisar</h3>
+              <p>Comece pelas pendências. As informações técnicas ficam dentro de “Ver detalhes”.</p>
+            </div>
+            <span id="pdfPendingBadge" class="pending-badge">0 pendências</span>
+          </div>
 
-        <div class="panel reconciliation-panel">
-          <div class="reconciliation-copy"><span class="panel-kicker">RAIZ DA DIFERENÇA</span><h3 id="pdfReconciliationTitle">Por que o Domínio não está batendo?</h3><p id="pdfReconciliationText"></p></div>
-          <div class="reconciliation-equation" id="pdfReconciliationEquation"></div>
-        </div>
+          <div class="simple-filter-toolbar">
+            <div class="simple-filter-tabs" aria-label="Filtros da conferência">
+              <button class="simple-filter active" data-pdf-filter="pending" type="button">Para resolver</button>
+              <button class="simple-filter" data-pdf-filter="missing-b" type="button">Não escrituradas</button>
+              <button class="simple-filter" data-pdf-filter="divergent" type="button">Valor diferente</button>
+              <button class="simple-filter" data-pdf-filter="missing-a" type="button">Extras no Domínio</button>
+              <button class="simple-filter" data-pdf-filter="resolved" type="button">Resolvidas</button>
+              <button class="simple-filter" data-pdf-filter="ok" type="button">Conferidas</button>
+              <button class="simple-filter" data-pdf-filter="all" type="button">Todas</button>
+            </div>
+            <label class="search-box simple-search">⌕<input id="pdfSearchInput" placeholder="Buscar número da NF ou fornecedor" /></label>
+          </div>
 
-        <div class="summary-grid seven"><button class="summary-card active" data-pdf-filter="all"><span>NFs na base SEFAZ</span><strong id="pdfTotalCount">0</strong><small>documentos oficiais</small></button><button class="summary-card success" data-pdf-filter="ok"><span>Corretas no Domínio</span><strong id="pdfOkCount">0</strong><small>número e valor conferidos</small></button><button class="summary-card danger" data-pdf-filter="missing-b"><span>Não escrituradas</span><strong id="pdfMissingCount">0</strong><small>constam na SEFAZ e faltam no Domínio</small></button><button class="summary-card warning" data-pdf-filter="divergent"><span>Valor incorreto</span><strong id="pdfDivergentCount">0</strong><small>NF localizada, total diferente</small></button><button class="summary-card extra" data-pdf-filter="missing-a"><span>Extras no Domínio</span><strong id="pdfExtraCount">0</strong><small>sem correspondência na SEFAZ</small></button><button class="summary-card purple" data-pdf-filter="grouped"><span>Somadas no Domínio</span><strong id="pdfGroupedCount">0</strong><small>desdobramentos consolidados</small></button><button class="summary-card pending" data-pdf-filter="pending"><span>Pendências abertas</span><strong id="pdfPendingCount">0</strong><small id="pdfResolvedCount">0 resolvidas</small></button></div>
-        <div class="panel validation-panel" id="pdfValidationPanel"></div>
-        <div class="panel table-panel">
-          <div class="table-toolbar"><div class="filter-tabs"><button class="filter-tab active" data-pdf-filter="all">Visão geral</button><button class="filter-tab" data-pdf-filter="pending">Pendências</button><button class="filter-tab" data-pdf-filter="critical">Críticas</button><button class="filter-tab" data-pdf-filter="missing-b">Não escrituradas no Domínio</button><button class="filter-tab" data-pdf-filter="missing-a">Lançamentos extras no Domínio</button><button class="filter-tab" data-pdf-filter="divergent">Valor incorreto no Domínio</button><button class="filter-tab" data-pdf-filter="grouped">Somadas no Domínio</button><button class="filter-tab" data-pdf-filter="duplicate">Repetições para revisar</button><button class="filter-tab" data-pdf-filter="resolved">Resolvidas</button><button class="filter-tab" data-pdf-filter="ok">Corretas no Domínio</button></div><label class="search-box">⌕<input id="pdfSearchInput" placeholder="Buscar NF, fornecedor ou anotação" /></label></div>
-          <div class="table-wrap"><table class="decision-table"><thead><tr><th>Prioridade</th><th>Diagnóstico / NF</th><th>SEFAZ x Domínio</th><th class="align-right">Diferença</th><th>Causa provável e ação</th><th>Tratamento</th></tr></thead><tbody id="pdfResultsBody"></tbody></table><div id="pdfEmptyResults" class="empty-results hidden"><div>⌕</div><strong>Nenhum item encontrado</strong><span>Altere o filtro ou o termo de busca.</span></div></div>
-        </div>
+          <div id="pdfResultsBody" class="case-list"></div>
+          <div id="pdfEmptyResults" class="empty-results hidden">
+            <div>✓</div><strong>Nenhuma nota neste filtro</strong><span>Escolha outro filtro ou altere a busca.</span>
+          </div>
+        </section>
+
+        <details class="panel technical-summary">
+          <summary><span>Ver resumo financeiro e detalhes técnicos</span><small>Totais, origem da diferença e indicadores completos</small></summary>
+          <div class="technical-summary-body">
+            <div class="financial-grid technical-financial-grid">
+              <article class="financial-card"><span id="pdfTotalALabel">Base oficial da SEFAZ</span><strong id="pdfTotalAValue">R$ 0,00</strong><small id="pdfTotalARecords">0 NFs oficiais</small></article>
+              <article class="financial-card"><span id="pdfTotalBLabel">Total escriturado no Domínio</span><strong id="pdfTotalBValue">R$ 0,00</strong><small id="pdfTotalBRecords">0 lançamentos</small></article>
+              <article class="financial-card"><span>NFs na base SEFAZ</span><strong id="pdfTotalCount">0</strong><small>documentos oficiais</small></article>
+              <article class="financial-card"><span>Não escrituradas</span><strong id="pdfMissingCount">0</strong><small>faltam no Domínio</small></article>
+              <article class="financial-card"><span>Valor incorreto</span><strong id="pdfDivergentCount">0</strong><small>mesma NF, total diferente</small></article>
+              <article class="financial-card"><span>Extras no Domínio</span><strong id="pdfExtraCount">0</strong><small>sem base na SEFAZ</small></article>
+              <article class="financial-card"><span>Somadas no Domínio</span><strong id="pdfGroupedCount">0</strong><small>desdobramentos consolidados</small></article>
+            </div>
+
+            <div class="panel reconciliation-panel embedded-reconciliation">
+              <div class="reconciliation-copy">
+                <span class="panel-kicker">ORIGEM DA DIFERENÇA</span>
+                <h3 id="pdfReconciliationTitle">Por que o Domínio não está batendo?</h3>
+                <p id="pdfReconciliationText"></p>
+              </div>
+              <div class="reconciliation-equation" id="pdfReconciliationEquation"></div>
+            </div>
+            <div class="validation-panel embedded-validation" id="pdfValidationPanel"></div>
+          </div>
+        </details>
+
+        <div id="pdfPriorityList" class="priority-list hidden" aria-hidden="true"></div>
       </section>
     </section>
 

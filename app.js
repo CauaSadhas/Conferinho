@@ -834,8 +834,15 @@ function filteredPdfRows() {
 
 function renderPdfResults(rowsA, rowsB, rawRowsA = rowsA, rawRowsB = rowsB) {
   const groupedB = rowsB.filter((row) => row.consolidated).length;
-  $('#pdfResultSubtitle').textContent = `A base oficial contém ${rowsA.length} NF(s). O Domínio contém ${rowsB.length} NF(s) consolidadas a partir de ${rawRowsB.length} lançamento(s); ${groupedB} NF(s) do Domínio precisaram de soma automática.`;
-  $('#pdfValidationPanel').innerHTML = `<strong>Regra desta conciliação:</strong> cada NF da SEFAZ é tratada como uma obrigação de escrituração. O Conferinho procura essa NF no Domínio, soma os desdobramentos e classifica o resultado. Itens que existem somente no Domínio aparecem como verificação complementar, pois não possuem correspondência na base oficial.`;
+  const pendingCount = pdfState.records.filter((row) => row.needsAction && !row.resolved).length;
+  $('#pdfResultSubtitle').textContent = pendingCount
+    ? `${pendingCount} ocorrência(s) precisam de análise. Comece por “Para resolver” e trate uma NF por vez.`
+    : `As ${rowsA.length} NF(s) da base SEFAZ foram conferidas. ${groupedB} NF(s) do Domínio precisaram de soma automática.`;
+  $('#pdfValidationPanel').innerHTML = `<strong>Regra da conciliação:</strong> a SEFAZ é a base oficial. Cada NF deve existir no Domínio com o mesmo valor. Quando o Domínio divide uma NF em vários lançamentos, o Conferinho soma esses valores antes de comparar.`;
+  pdfState.filter = pendingCount ? 'pending' : 'all';
+  pdfState.search = '';
+  $('#pdfSearchInput').value = '';
+  $$('[data-pdf-filter]').forEach((item) => item.classList.toggle('active', item.dataset.pdfFilter === pdfState.filter));
   refreshPdfDecisionDashboard();
   $('#pdfResults').classList.remove('hidden');
   renderPdfTable();
@@ -948,42 +955,97 @@ function pdfCompositionSideHtml(record, label) {
   return `<section class="composition-side"><div class="composition-head"><h5>${escapeHtml(label)}</h5><span>${components.length} lançamento(s)</span><b>${money.format(record.value || 0)}</b></div><ol>${items}</ol></section>`;
 }
 
+function buildSimpleNextStep(row) {
+  if (row.status === 'missing-b') return `Procure a NF no Domínio. Se o documento for válido e não estiver escriturado, importe ou lance ${money.format(row.a?.value || 0)}.`;
+  if (row.status === 'missing-a') return 'Confirme se o lançamento pertence à empresa e ao período. Corrija o número, mantenha com justificativa ou exclua se for indevido.';
+  if (row.status === 'divergent') {
+    const difference = Math.abs((row.b?.value || 0) - (row.a?.value || 0));
+    return (row.b?.value || 0) > (row.a?.value || 0)
+      ? `Revise os lançamentos do Domínio e reduza a diferença de ${money.format(difference)} depois de localizar duplicidade ou valor indevido.`
+      : `Localize os ${money.format(difference)} que faltam no Domínio e corrija lançamento parcial, desconto ou falha de importação.`;
+  }
+  if (row.duplicate || row.exactComponentDuplicate) return 'Abra os detalhes e confirme se os lançamentos repetidos são desdobramentos legítimos ou uma duplicidade real.';
+  if (row.lowConfidence) return 'Confira visualmente o número e o valor no PDF antes de fazer qualquer correção.';
+  if (row.grouped) return 'Nenhuma correção necessária. A soma dos lançamentos do Domínio confere com a SEFAZ.';
+  return 'Nenhuma correção necessária. A NF está corretamente escriturada no Domínio.';
+}
+
 function renderPdfTable() {
-  const tbody = $('#pdfResultsBody');
-  tbody.innerHTML = '';
+  const list = $('#pdfResultsBody');
+  list.innerHTML = '';
   const rows = filteredPdfRows();
   rows.forEach((row) => {
     const source = row.a || row.b;
     const supplierA = row.a?.description || '';
     const supplierB = row.b?.description || '';
-    const supplierText = supplierA && supplierB && normalize(supplierA) !== normalize(supplierB) ? `${supplierA} / ${supplierB}` : supplierA || supplierB || 'Fornecedor não identificado';
+    const supplierText = supplierA && supplierB && normalize(supplierA) !== normalize(supplierB)
+      ? `${supplierA} / ${supplierB}`
+      : supplierA || supplierB || 'Fornecedor não identificado';
     const statusClass = row.status === 'ok' ? 'status-ok' : row.status === 'divergent' ? 'status-divergent' : 'status-missing';
-    const extraBadges = `${row.grouped ? '<span class="status-badge status-grouped">Σ Domínio consolidado</span>' : ''}${row.duplicate ? '<span class="status-badge status-duplicate">Mesmo nº em grupos diferentes</span>' : ''}${row.exactComponentDuplicate ? '<span class="status-badge status-review">Possível duplicidade</span>' : ''}${row.lowConfidence ? `<span class="status-badge status-review">Leitura ${row.confidence}%</span>` : ''}`;
-    const valueA = row.a?.value == null ? '—' : money.format(row.a.value);
-    const valueB = row.b?.value == null ? '—' : money.format(row.b.value);
+    const caseClass = row.status === 'ok' ? 'case-ok' : row.status === 'divergent' ? 'case-warning' : row.status === 'missing-b' ? 'case-danger' : 'case-extra';
+    const valueA = row.a?.value == null ? 'Não consta' : money.format(row.a.value);
+    const valueB = row.b?.value == null ? 'Não consta' : money.format(row.b.value);
     const countA = row.a?.componentCount || (row.a ? 1 : 0);
     const countB = row.b?.componentCount || (row.b ? 1 : 0);
-    const deltaText = row.status === 'divergent' ? `Domínio − SEFAZ: ${formatSignedMoney(row.signedDifference)}` : row.status === 'ok' ? (row.grouped ? 'Soma do Domínio igual ao valor oficial' : 'Valor correto no Domínio') : row.status === 'missing-b' ? `Falta escriturar: ${money.format(row.impact)}` : `Valor sem base SEFAZ: ${money.format(row.impact)}`;
-    const detailText = [row.a?.date ? `SEFAZ: ${row.a.date}` : '', row.b?.date ? `Domínio: ${row.b.date}` : '', row.a?.fileName || '', row.b?.fileName || ''].filter(Boolean).join(' · ');
-    const compositionCount = countA + countB;
-    const detailsContent = row.grouped
-      ? `<div class="composition-grid">${pdfCompositionSideHtml(row.a, 'SEFAZ — base oficial')}${pdfCompositionSideHtml(row.b, 'Domínio — escrituração')}</div>`
-      : `<span>${escapeHtml(detailText || 'Sem detalhes adicionais')}</span>`;
     const checklist = (row.checklist || []).map((item) => `<li>${escapeHtml(item)}</li>`).join('');
-    const tr = document.createElement('tr');
-    tr.dataset.recordId = row.id;
-    tr.classList.toggle('decision-row-resolved', row.resolved);
-    tr.innerHTML = `
-      <td><span class="priority-badge priority-${row.priority}">${escapeHtml(pdfPriorityLabel(row.priority))}</span></td>
-      <td><span class="status-badge ${statusClass}">${escapeHtml(pdfStatusLabel(row.status, row.grouped))}</span>${extraBadges}<strong class="decision-nf">NF ${escapeHtml(source?.identifier || '—')}</strong><span class="decision-supplier" title="${escapeHtml(supplierText)}">${escapeHtml(supplierText)}</span>${source?.series ? `<small class="decision-series">Série ${escapeHtml(source.series)}</small>` : ''}</td>
-      <td><div class="value-compare"><span><small>SEFAZ · deveria estar</small><b>${valueA}</b>${countA > 1 ? `<em>${countA} registros consolidados</em>` : ''}</span><span class="value-arrow">→</span><span><small>Domínio · foi escriturado</small><b>${valueB}</b>${countB > 1 ? `<em>${countB} lançamentos somados</em>` : ''}</span></div><span class="value-delta">${escapeHtml(deltaText)}</span><details class="record-details ${row.grouped ? 'composition-details' : ''}"><summary>${row.grouped ? `Ver composição (${compositionCount} registros)` : 'Ver datas e arquivos'}</summary>${detailsContent}</details></td>
-      <td class="align-right"><strong class="impact-value">${row.impact ? money.format(row.impact) : '—'}</strong></td>
-      <td><strong class="diagnosis-cause">${escapeHtml(row.cause || '')}</strong><span class="action-text">${escapeHtml(row.action)}</span><details class="investigation-details"><summary>O que conferir</summary><ol>${checklist}</ol></details></td>
-      <td><label class="resolution-check"><input type="checkbox" data-resolve-record="${escapeHtml(row.id)}" ${row.resolved ? 'checked' : ''}/><span>${row.resolved ? 'Resolvida' : 'Pendente'}</span></label><textarea class="resolution-note" data-note-record="${escapeHtml(row.id)}" rows="2" placeholder="Registre a causa encontrada e a correção realizada">${escapeHtml(row.note || '')}</textarea></td>`;
-    tbody.appendChild(tr);
+    const detailText = [
+      row.a?.date ? `SEFAZ: ${row.a.date}` : '',
+      row.b?.date ? `Domínio: ${row.b.date}` : '',
+      row.a?.fileName ? `Arquivo SEFAZ: ${row.a.fileName}` : '',
+      row.b?.fileName ? `Arquivo Domínio: ${row.b.fileName}` : ''
+    ].filter(Boolean).join(' · ');
+    const compositionCount = countA + countB;
+    const technicalContent = row.grouped
+      ? `<div class="composition-grid">${pdfCompositionSideHtml(row.a, 'SEFAZ — base oficial')}${pdfCompositionSideHtml(row.b, 'Domínio — escrituração')}</div>`
+      : `<p class="case-file-details">${escapeHtml(detailText || 'Sem datas ou arquivos adicionais identificados.')}</p>`;
+    const differenceLabel = row.status === 'missing-b' ? 'Falta escriturar' : row.status === 'missing-a' ? 'Sem base SEFAZ' : row.status === 'divergent' ? 'Diferença' : 'Resultado';
+    const differenceValue = row.status === 'ok' ? 'Confere' : row.impact ? money.format(row.impact) : 'Revisar';
+    const extraBadges = `${row.grouped ? '<span class="status-badge status-grouped">Σ valores somados</span>' : ''}${row.lowConfidence ? `<span class="status-badge status-review">Confirmar leitura ${row.confidence}%</span>` : ''}${row.duplicate || row.exactComponentDuplicate ? '<span class="status-badge status-review">Revisar repetição</span>' : ''}`;
+    const card = document.createElement('article');
+    card.dataset.recordId = row.id;
+    card.className = `case-card ${caseClass}${row.resolved ? ' case-resolved' : ''}`;
+    card.innerHTML = `
+      <header class="case-header">
+        <div class="case-heading">
+          <div class="case-badges"><span class="status-badge ${statusClass}">${escapeHtml(pdfStatusLabel(row.status, row.grouped))}</span>${extraBadges}${row.needsAction && !row.resolved ? `<span class="case-priority priority-${row.priority}">${escapeHtml(pdfPriorityLabel(row.priority))}</span>` : ''}</div>
+          <div class="case-identity"><strong>NF ${escapeHtml(source?.identifier || '—')}</strong><span title="${escapeHtml(supplierText)}">${escapeHtml(supplierText)}</span>${source?.series ? `<small>Série ${escapeHtml(source.series)}</small>` : ''}</div>
+        </div>
+        <label class="case-resolve-toggle">
+          <input type="checkbox" data-resolve-record="${escapeHtml(row.id)}" ${row.resolved ? 'checked' : ''}/>
+          <span>${row.resolved ? 'Resolvida' : 'Marcar resolvida'}</span>
+        </label>
+      </header>
+
+      <div class="case-values">
+        <div class="case-value sefaz-value"><small>SEFAZ · valor correto</small><strong>${valueA}</strong>${countA > 1 ? `<em>${countA} registros</em>` : ''}</div>
+        <span class="case-value-arrow">→</span>
+        <div class="case-value dominio-value"><small>Domínio · valor encontrado</small><strong>${valueB}</strong>${countB > 1 ? `<em>${countB} lançamentos somados</em>` : ''}</div>
+        <div class="case-difference"><small>${differenceLabel}</small><strong>${differenceValue}</strong></div>
+      </div>
+
+      <div class="case-next-action">
+        <span class="case-action-icon">→</span>
+        <div><small>O que fazer agora</small><strong>${escapeHtml(buildSimpleNextStep(row))}</strong></div>
+      </div>
+
+      <div class="case-footer">
+        <details class="case-details">
+          <summary>Ver detalhes da análise${row.grouped ? ` e composição (${compositionCount})` : ''}</summary>
+          <div class="case-details-grid">
+            <section><h4>Por que apareceu</h4><p>${escapeHtml(row.cause || '')}</p></section>
+            <section><h4>O que conferir</h4><ol>${checklist}</ol></section>
+          </div>
+          ${technicalContent}
+        </details>
+        <details class="case-resolution" ${row.resolved && row.note ? 'open' : ''}>
+          <summary>${row.note ? 'Ver solução registrada' : 'Registrar o que foi feito'}</summary>
+          <textarea class="resolution-note" data-note-record="${escapeHtml(row.id)}" rows="2" placeholder="Ex.: XML reimportado, valor corrigido ou nota de outro período">${escapeHtml(row.note || '')}</textarea>
+        </details>
+      </div>`;
+    list.appendChild(card);
   });
   $('#pdfEmptyResults').classList.toggle('hidden', rows.length > 0);
-  tbody.parentElement.classList.toggle('hidden', rows.length === 0);
+  list.classList.toggle('hidden', rows.length === 0);
 }
 
 $('#pdfResultsBody').addEventListener('change', (event) => {
@@ -993,12 +1055,16 @@ $('#pdfResultsBody').addEventListener('change', (event) => {
   if (!row) return;
   row.resolved = checkbox.checked;
   refreshPdfDecisionDashboard();
-  if (['pending','resolved','critical'].includes(pdfState.filter)) renderPdfTable();
-  else {
-    const tr = checkbox.closest('tr');
-    tr?.classList.toggle('decision-row-resolved', row.resolved);
-    const label = checkbox.parentElement?.querySelector('span');
-    if (label) label.textContent = row.resolved ? 'Resolvida' : 'Pendente';
+  const card = checkbox.closest('.case-card');
+  card?.classList.toggle('case-resolved', row.resolved);
+  const label = checkbox.parentElement?.querySelector('span');
+  if (label) label.textContent = row.resolved ? 'Resolvida' : 'Marcar resolvida';
+  if (row.resolved) {
+    const resolution = card?.querySelector('.case-resolution');
+    if (resolution && !row.note) resolution.open = true;
+    showToast(`NF ${(row.a || row.b)?.identifier || '—'} marcada como resolvida.`);
+  } else {
+    showToast(`NF ${(row.a || row.b)?.identifier || '—'} reaberta para análise.`);
   }
 });
 

@@ -1,26 +1,16 @@
-CONFERINHO — ATUALIZAÇÃO V7
-MÓDULO: CONCILIAÇÃO DE ENTRADAS — SEFAZ COMO BASE OFICIAL
+CONFERINHO — ATUALIZAÇÃO V8
+Fluxo simplificado da Conciliação de Entradas
 
-COMO ATUALIZAR
-
-1. Extraia este ZIP.
+1. Extraia o arquivo ZIP.
 2. Abra o repositório verdadeiro do Conferinho no GitHub.
-3. Na raiz do repositório, substitua estes três arquivos:
+3. Substitua estes arquivos na raiz do repositório:
    - index.html
    - styles.css
    - app.js
-4. Clique em “Commit changes”.
-5. Aguarde a Vercel concluir a publicação.
+4. NÃO apague a pasta assets existente no repositório.
+5. Clique em Commit changes.
+6. Aguarde a Vercel publicar a nova versão.
+7. Atualize a página usando Ctrl + F5 para evitar que o navegador mostre arquivos antigos.
 
-IMPORTANTE
-
-- Não apague a pasta assets.
-- Não crie outra pasta para estes arquivos: eles devem ficar na raiz do repositório.
-- Os módulos Analisador NFS-e e Somador de NFs foram mantidos.
-- Esta atualização não altera seus dados; ela muda a lógica e a apresentação da conciliação.
-
-PRINCÍPIO DO MÓDULO
-
-A SEFAZ é a base oficial. O Domínio é a escrituração auditada.
-Cada NF da SEFAZ deve ser localizada no Domínio com o mesmo valor.
-Quando não bater, o Conferinho apresenta causa provável, verificações e ação recomendada.
+A lógica de comparação SEFAZ x Domínio e a consolidação automática de lançamentos foram mantidas.
+A principal mudança desta versão está na organização e facilidade de uso do resultado.

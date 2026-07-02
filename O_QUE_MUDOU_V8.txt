@@ -1,0 +1,37 @@
+CONFERINHO V8 — RESULTADO MAIS SIMPLES
+
+O painel antigo apresentava muitas colunas, filtros e informações técnicas ao mesmo tempo.
+Isso funcionava para quem conhecia o projeto, mas dificultava o uso por outras pessoas.
+
+ALTERAÇÕES PRINCIPAIS
+
+- A tabela larga foi substituída por cartões de conferência.
+- Cada cartão reúne todas as informações essenciais de uma NF no mesmo lugar.
+- A ordem de leitura agora é:
+  1. Qual é o problema.
+  2. Valor correto na SEFAZ.
+  3. Valor encontrado no Domínio.
+  4. Diferença.
+  5. O que fazer agora.
+  6. Registrar a solução e marcar como resolvida.
+- O resultado abre diretamente em “Para resolver”.
+- Os filtros foram reduzidos e renomeados com linguagem mais simples.
+- Datas, arquivos, causas detalhadas e composição ficam escondidos em “Ver detalhes”.
+- Totais e indicadores técnicos ficam dentro de “Ver resumo financeiro e detalhes técnicos”.
+- Ao marcar uma NF como resolvida, o cartão fica verde e o campo para registrar a solução é aberto.
+- O painel superior mostra apenas quatro números essenciais:
+  - Para resolver.
+  - Conferidas.
+  - Percentual da base correta.
+  - Valor a investigar.
+- Foi incluído um guia visual explicando como usar o resultado em quatro passos.
+
+O QUE FOI MANTIDO
+
+- SEFAZ como base oficial.
+- Auditoria do Domínio por número da NF.
+- Comparação independente da ordem das notas.
+- Soma automática dos lançamentos desdobrados no Domínio.
+- Identificação de notas ausentes, valores diferentes e lançamentos extras.
+- Marcação de pendências resolvidas e anotações.
+- Exportação, impressão e resumo executivo.

@@ -1,14 +1,17 @@
-VALIDAÇÕES DA VERSÃO V7
+TESTES DA VERSÃO V8
 
-- JavaScript validado com node --check: sem erros de sintaxe.
-- HTML analisado: nenhum ID duplicado e todos os elementos essenciais presentes.
-- Teste lógico realizado com quatro situações:
-  1. mesma NF e mesmo valor;
-  2. mesma NF com valor diferente;
-  3. NF da SEFAZ ausente no Domínio;
-  4. lançamento do Domínio sem correspondência na SEFAZ.
-- Consolidação testada com três lançamentos no Domínio:
-  R$ 1.496,53 + R$ 224,37 + R$ 365,40 = R$ 2.086,30.
-- Resultado da consolidação: NF classificada como correta após soma.
-- Métricas testadas: percentual conciliado, ausentes, divergentes, extras e impacto financeiro.
-- Os módulos Analisador NFS-e e Somador de NFs foram preservados.
+- Validação de sintaxe do app.js: aprovado.
+- Validação dos IDs da página: nenhum ID duplicado ou ausente.
+- Carregamento da nova interface em navegador real: aprovado, sem erros JavaScript.
+- Exibição do filtro “Para resolver” como padrão: aprovado.
+- Renderização de notas ausentes no Domínio: aprovada.
+- Renderização de valores divergentes: aprovada.
+- Renderização de lançamentos extras no Domínio: aprovada.
+- Exibição da consolidação de lançamentos da mesma NF: preservada.
+- Marcação de uma pendência como resolvida: aprovada.
+- Atualização dos indicadores após resolução: aprovada.
+- Abertura automática do campo para registrar a solução: aprovada.
+- Filtro de pendências resolvidas: aprovado.
+- Abertura de detalhes da análise: aprovada.
+- Busca por número da NF: aprovada.
+- Teste responsivo previsto por regras para desktop, tablet e celular.
