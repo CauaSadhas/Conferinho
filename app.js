@@ -3,7 +3,7 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const pdfState = { filesA: [], filesB: [], records: [], filter: "all", search: "", labels: { A: "Relatório 1", B: "Relatório 2" }, metrics: null };
+const pdfState = { filesA: [], filesB: [], records: [], filter: "all", search: "", labels: { A: "SEFAZ", B: "Domínio" }, metrics: null };
 const nfseState = { files: [], notes: [], warnings: [], processed: 0, failed: 0, filter: "retained", search: "" };
 const sumState = { files: [], records: [], warnings: [], pages: 0, filter: "all", search: "" };
 
@@ -11,10 +11,10 @@ if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.clo
 
 const moduleCopy = {
   pdf: {
-    title: 'Deixe que o <span>Conferinho</span> encontre as diferenças para você.',
-    text: "Envie dois relatórios. O Conferinho agrupa os lançamentos da mesma NF, soma os valores, compara os totais e entrega um plano de ação por prioridade.",
-    benefits: ["Soma automática por NF", "Comparação do total consolidado", "Plano de ação exportável"],
-    mascot: "Eu somo os lançamentos desdobrados antes de comparar e mostro por onde começar."
+    title: 'A <span>SEFAZ é a base</span>. O Domínio precisa bater.',
+    text: "Envie a base oficial da SEFAZ. Eu procuro cada NF no Domínio, somo os desdobramentos e mostro por que a escrituração não está batendo.",
+    benefits: ["SEFAZ como fonte oficial", "Domínio auditado por NF", "Causa provável e ação"],
+    mascot: "Eu parto da SEFAZ, audito o Domínio e mostro onde investigar cada diferença."
   },
   nfse: {
     title: 'O <span>Conferinho</span> também analisa suas NFS-e.',
@@ -96,7 +96,7 @@ function setPdfFiles(side, files) {
   list.innerHTML = files.map((file) => `<span class="file-chip" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>`).join('');
   const ready = pdfState.filesA.length && pdfState.filesB.length;
   $('#compareBtn').disabled = !ready;
-  $('#pdfStatusHint').textContent = ready ? `${pdfState.filesA.length} arquivo(s) no Relatório 1 e ${pdfState.filesB.length} no Relatório 2.` : 'Estou esperando pelo menos um PDF em cada campo.';
+  $('#pdfStatusHint').textContent = ready ? `Base SEFAZ com ${pdfState.filesA.length} PDF(s) e escrituração Domínio com ${pdfState.filesB.length} PDF(s) prontas para auditoria.` : 'Envie a base oficial da SEFAZ e o relatório de entradas do Domínio.';
 }
 
 $('#compareBtn').addEventListener('click', comparePdfs);
@@ -107,8 +107,8 @@ $('#pdfCopySummaryBtn').addEventListener('click', copyPdfExecutiveSummary);
 $('#pdfPrintBtn').addEventListener('click', () => window.print());
 
 async function comparePdfs() {
-  pdfState.labels.A = ($('#reportALabel').value || 'Relatório 1').trim();
-  pdfState.labels.B = ($('#reportBLabel').value || 'Relatório 2').trim();
+  pdfState.labels.A = 'SEFAZ';
+  pdfState.labels.B = 'Domínio';
   $('#pdfProgress').classList.remove('hidden'); $('#pdfResults').classList.add('hidden'); $('#compareBtn').disabled = true;
   try {
     const total = pdfState.filesA.length + pdfState.filesB.length; let done = 0;
@@ -123,14 +123,14 @@ async function comparePdfs() {
     };
     const docsA = await readGroup(pdfState.filesA, 'A');
     const docsB = await readGroup(pdfState.filesB, 'B');
-    updatePdfProgress(.86, 'Organizando registros e comparando os dois lados');
+    updatePdfProgress(.86, 'Montando a base oficial da SEFAZ e localizando cada NF no Domínio');
     const rawRowsA = docsA.flatMap((doc) => recordsFromText(doc.text, doc.fileName, 'A'));
     const rawRowsB = docsB.flatMap((doc) => recordsFromText(doc.text, doc.fileName, 'B'));
-    updatePdfProgress(.92, 'Somando lançamentos desdobrados da mesma NF');
+    updatePdfProgress(.92, 'Somando desdobramentos do Domínio e investigando as diferenças');
     const rowsA = consolidatePdfRecords(rawRowsA, 'A');
     const rowsB = consolidatePdfRecords(rawRowsB, 'B');
     pdfState.records = enrichPdfDecisions(matchRecords(rowsA, rowsB), rowsA, rowsB, rawRowsA, rawRowsB);
-    updatePdfProgress(1, 'Consolidação, diagnóstico e plano de ação concluídos');
+    updatePdfProgress(1, 'Auditoria do Domínio concluída com diagnóstico das pendências');
     renderPdfResults(rowsA, rowsB, rawRowsA, rawRowsB);
   } catch (error) {
     showToast(`Não foi possível comparar: ${error.message}`, true);
@@ -583,7 +583,7 @@ function matchRecords(rowsA, rowsB) {
     groupA.forEach((a) => {
       const best = chooseBestSameNoteMatch(a, groupB, usedB);
       if (!best) {
-        output.push({ status: 'missing-b', a, b: null, duplicate, grouped: !!a.consolidated, reason: `NF ${a.identifier} não está no Relatório 2.` });
+        output.push({ status: 'missing-b', a, b: null, duplicate, grouped: !!a.consolidated, reason: `NF ${a.identifier} consta na SEFAZ, mas não está no Domínio.` });
         return;
       }
       usedB.add(best.index);
@@ -598,15 +598,15 @@ function matchRecords(rowsA, rowsB) {
         difference: Number.isFinite(best.difference) ? best.difference : null,
         reason: sameValue
           ? grouped
-            ? `NF ${a.identifier} conferida depois de somar os lançamentos desdobrados.`
-            : `NF ${a.identifier} localizada no outro relatório com o mesmo valor.`
+            ? `NF ${a.identifier} da SEFAZ foi conferida após somar os lançamentos desdobrados do Domínio.`
+            : `NF ${a.identifier} da SEFAZ foi localizada no Domínio com o mesmo valor.`
           : grouped
-            ? `NF ${a.identifier} foi consolidada, mas o total ainda está diferente: ${money.format(a.value)} no Relatório 1 e ${money.format(best.candidate.value)} no Relatório 2.`
-            : `NF ${a.identifier} localizada nos dois relatórios, mas o valor está diferente: ${money.format(a.value)} no Relatório 1 e ${money.format(best.candidate.value)} no Relatório 2.`
+            ? `NF ${a.identifier} foi consolidada, mas o total está diferente: ${money.format(a.value)} na SEFAZ e ${money.format(best.candidate.value)} no Domínio.`
+            : `NF ${a.identifier} existe na SEFAZ e no Domínio, mas os valores estão diferentes: ${money.format(a.value)} na SEFAZ e ${money.format(best.candidate.value)} no Domínio.`
       });
     });
     groupB.forEach((b, index) => {
-      if (!usedB.has(index)) output.push({ status: 'missing-a', a: null, b, duplicate, grouped: !!b.consolidated, reason: `NF ${b.identifier} não está no Relatório 1.` });
+      if (!usedB.has(index)) output.push({ status: 'missing-a', a: null, b, duplicate, grouped: !!b.consolidated, reason: `NF ${b.identifier} está escriturada no Domínio, mas não possui correspondência na base SEFAZ.` });
     });
   });
   return output;
@@ -618,55 +618,116 @@ function formatSignedMoney(value) {
 }
 
 function pdfStatusLabel(status, grouped = false) {
-  if (grouped && status === 'ok') return 'Conferida após soma';
-  if (grouped && status === 'divergent') return 'Divergente após soma';
-  return ({ ok: 'Conferido', divergent: 'Valor divergente', 'missing-a': `Ausente no ${pdfState.labels.A}`, 'missing-b': `Ausente no ${pdfState.labels.B}` })[status] || status;
+  if (grouped && status === 'ok') return 'Correta após soma';
+  if (grouped && status === 'divergent') return 'Valor incorreto após soma';
+  return ({
+    ok: 'Escriturada corretamente',
+    divergent: 'Valor incorreto no Domínio',
+    'missing-a': 'Lançamento extra no Domínio',
+    'missing-b': 'Não escriturada no Domínio'
+  })[status] || status;
 }
 
 function pdfPriorityLabel(priority) {
   return ({ critical: 'Crítica', high: 'Alta', medium: 'Revisar', ok: 'Conferida' })[priority] || 'Revisar';
 }
 
-function buildPdfAction(row) {
-  const labelA = pdfState.labels.A;
-  const labelB = pdfState.labels.B;
-  let action = '';
-  if (row.status === 'missing-b') {
-    action = row.grouped
-      ? `A NF foi somada em ${row.a?.componentCount || 1} lançamento(s) no ${labelA}, totalizando ${money.format(row.a?.value || 0)}. Procure esse total no ${labelB}; confira período, importação, cancelamento e filtros.`
-      : `Localize a NF no ${labelB}. Confira período, importação, cancelamento e filtros; inclua a nota se for válida ou documente o motivo da ausência.`;
-  } else if (row.status === 'missing-a') {
-    action = row.grouped
-      ? `A NF foi somada em ${row.b?.componentCount || 1} lançamento(s) no ${labelB}, totalizando ${money.format(row.b?.value || 0)}. Procure esse total no ${labelA}; confira período, importação, cancelamento e filtros.`
-      : `Localize a NF no ${labelA}. Confira período, importação, cancelamento e filtros; inclua a nota se for válida ou documente o motivo da ausência.`;
-  } else if (row.status === 'divergent') {
-    const delta = (row.b?.value || 0) - (row.a?.value || 0);
-    const higher = delta > 0 ? labelB : labelA;
-    const lower = delta > 0 ? labelA : labelB;
-    action = row.grouped
-      ? `A soma dos lançamentos já foi feita automaticamente. Abra “Ver composição”, confira os valores que formam cada total e identifique lançamento faltante, duplicado, CFOP desdobrado incorretamente ou diferença no XML. O ${higher} está ${money.format(Math.abs(delta))} maior que o ${lower}.`
-      : `Abra a NF/XML e confirme o valor correto. O ${higher} está ${money.format(Math.abs(delta))} maior que o ${lower}; corrija o lançamento ou a importação incorreta.`;
-  } else if (row.duplicate) {
-    action = `Existem grupos diferentes com o mesmo número de NF. Confirme CNPJ, série e fornecedor antes de unir ou excluir lançamentos.`;
-  } else if (row.exactComponentDuplicate) {
-    action = `A NF foi consolidada, mas há lançamentos com mesmo valor, data e fornecedor. Confira se são desdobramentos legítimos ou duplicidade de escrituração.`;
-  } else if (row.lowConfidence) {
-    action = `Valide esta linha visualmente no PDF: a leitura automática teve baixa confiança e pode ter confundido número ou valor.`;
-  } else if (row.grouped) {
-    action = `Nenhuma ação necessária. O Conferinho somou ${Math.max(row.a?.componentCount || 1, row.b?.componentCount || 1)} lançamento(s) da mesma NF e o total conferiu com o outro relatório.`;
-  } else {
-    action = 'Nenhuma ação necessária. A NF foi localizada nos dois relatórios com o mesmo valor.';
+function buildPdfCause(row) {
+  if (row.status === 'missing-b') return 'A NF oficial não foi localizada na escrituração.';
+  if (row.status === 'missing-a') return 'Existe um lançamento no Domínio sem correspondência na base SEFAZ.';
+  if (row.status === 'divergent') {
+    const sefaz = row.a?.value || 0;
+    const dominio = row.b?.value || 0;
+    return dominio > sefaz
+      ? 'O valor escriturado no Domínio ficou maior que o valor oficial.'
+      : 'O valor escriturado no Domínio ficou menor que o valor oficial.';
   }
-  if (row.duplicate && row.status !== 'ok') action = `Primeiro separe os grupos pelo CNPJ/série. Depois: ${action}`;
-  if (row.exactComponentDuplicate && row.status !== 'ok') action += ' Revise também os lançamentos repetidos dentro da composição.';
-  if (row.lowConfidence && row.status !== 'ok') action += ' Antes de corrigir, confirme também se a leitura do PDF está correta.';
-  return action;
+  if (row.duplicate) return 'O mesmo número de NF apareceu em grupos que podem pertencer a documentos diferentes.';
+  if (row.exactComponentDuplicate) return 'Há lançamentos idênticos dentro da composição, com risco de duplicidade.';
+  if (row.lowConfidence) return 'A leitura automática desta NF teve baixa confiança.';
+  if (row.grouped) return 'O Domínio dividiu a NF em vários lançamentos, mas a soma ficou correta.';
+  return 'A NF oficial foi encontrada no Domínio com o mesmo valor.';
 }
 
+function buildPdfChecklist(row) {
+  if (row.status === 'missing-b') return [
+    'Confirmar se o XML ou a nota foi importado no Domínio.',
+    'Verificar competência, filtros, empresa e modelo do documento.',
+    'Pesquisar número, série e CNPJ antes de escriturar manualmente.'
+  ];
+  if (row.status === 'missing-a') return [
+    'Confirmar se o lançamento pertence ao mesmo período e à mesma empresa.',
+    'Verificar número digitado, série, CNPJ e possível nota cancelada.',
+    'Validar o XML antes de manter ou excluir o lançamento do Domínio.'
+  ];
+  if (row.status === 'divergent') {
+    const sefaz = row.a?.value || 0;
+    const dominio = row.b?.value || 0;
+    if (dominio > sefaz) return [
+      'Abrir a composição e procurar lançamento duplicado ou soma em dobro.',
+      'Conferir acréscimos, frete, descontos e o campo Valor Contábil.',
+      'Comparar o total do XML com o valor consolidado no Domínio.'
+    ];
+    return [
+      'Abrir a composição e procurar lançamento, parcela ou item faltante.',
+      'Conferir descontos indevidos e o campo Valor Contábil.',
+      'Reimportar ou complementar a escrituração se o XML estiver correto.'
+    ];
+  }
+  if (row.duplicate) return [
+    'Separar os registros por CNPJ, série e fornecedor.',
+    'Evitar somar documentos diferentes que possuem o mesmo número.',
+    'Confirmar manualmente qual grupo corresponde à NF da SEFAZ.'
+  ];
+  if (row.exactComponentDuplicate) return [
+    'Comparar data, valor e fornecedor dos lançamentos repetidos.',
+    'Confirmar se são desdobramentos legítimos ou duplicidade real.',
+    'Excluir somente depois de validar o documento original.'
+  ];
+  if (row.lowConfidence) return [
+    'Abrir o PDF e confirmar visualmente número, série e valor.',
+    'Gerar o relatório novamente com melhor qualidade, se necessário.',
+    'Não corrigir o Domínio antes de validar a leitura.'
+  ];
+  return ['Nenhuma correção necessária.'];
+}
+
+function buildPdfAction(row) {
+  const valueSefaz = row.a?.value || 0;
+  const valueDominio = row.b?.value || 0;
+  const difference = Math.abs(valueDominio - valueSefaz);
+  let action = '';
+
+  if (row.status === 'missing-b') {
+    action = `Localize a NF no Domínio. Se ela não tiver sido importada e o documento for válido, importe ou escriture ${money.format(valueSefaz)} e registre a causa da ausência.`;
+  } else if (row.status === 'missing-a') {
+    action = `Valide por que ${money.format(valueDominio)} está escriturado sem aparecer na base SEFAZ. Mantenha somente após confirmar XML, período e situação da nota.`;
+  } else if (row.status === 'divergent') {
+    const consolidationNote = row.grouped ? 'A soma dos desdobramentos já foi considerada. ' : '';
+    action = valueDominio > valueSefaz
+      ? `${consolidationNote}Reduza ou corrija ${money.format(difference)} no Domínio depois de identificar duplicidade, acréscimo ou valor contábil indevido.`
+      : `${consolidationNote}Localize os ${money.format(difference)} que faltam no Domínio e corrija lançamento parcial, desconto ou falha de importação.`;
+  } else if (row.duplicate) {
+    action = 'Identifique o documento correto pelo CNPJ e pela série antes de consolidar ou corrigir qualquer valor.';
+  } else if (row.exactComponentDuplicate) {
+    action = 'Confirme se a repetição é um desdobramento legítimo. Se não for, remova o lançamento duplicado no Domínio.';
+  } else if (row.lowConfidence) {
+    action = 'Revise a linha no PDF antes de tomar qualquer decisão fiscal.';
+  } else if (row.grouped) {
+    action = 'Nenhuma correção necessária: a soma dos lançamentos do Domínio reproduziu o valor oficial da SEFAZ.';
+  } else {
+    action = 'Nenhuma correção necessária: a NF da SEFAZ está corretamente escriturada no Domínio.';
+  }
+
+  if (row.duplicate && row.status !== 'ok') action = `Antes da correção, separe os grupos pelo CNPJ e pela série. ${action}`;
+  if (row.exactComponentDuplicate && row.status !== 'ok') action += ' Revise também os lançamentos idênticos da composição.';
+  if (row.lowConfidence && row.status !== 'ok') action += ' Confirme primeiro se o número e o valor foram lidos corretamente.';
+  return action;
+}
 function enrichPdfDecisions(records, rowsA, rowsB, rawRowsA = rowsA, rawRowsB = rowsB) {
   const totalA = rawRowsA.reduce((sum, row) => sum + (row.value || 0), 0);
   const totalB = rawRowsB.reduce((sum, row) => sum + (row.value || 0), 0);
-  const base = Math.max(totalA, totalB, 1);
+  const base = Math.max(totalA, 1);
   const criticalThreshold = Math.max(1000, base * 0.01);
   const enriched = records.map((row, index) => {
     const valueA = row.a?.value || 0;
@@ -680,11 +741,11 @@ function enrichPdfDecisions(records, rowsA, rowsB, rawRowsA = rowsA, rawRowsB = 
     const grouped = !!(row.grouped || row.a?.consolidated || row.b?.consolidated);
     const needsAction = row.status !== 'ok' || row.duplicate || exactComponentDuplicate || lowConfidence;
     let priority = 'ok';
-    if (needsAction) {
-      if ((row.status !== 'ok' && impact >= criticalThreshold) || (row.duplicate && row.status.startsWith('missing'))) priority = 'critical';
-      else if (row.status.startsWith('missing') || row.status === 'divergent' || row.duplicate || exactComponentDuplicate) priority = 'high';
-      else priority = 'medium';
-    }
+    if (row.status === 'missing-b') priority = impact >= criticalThreshold ? 'critical' : 'high';
+    else if (row.status === 'divergent') priority = impact >= criticalThreshold ? 'critical' : 'high';
+    else if (row.status === 'missing-a') priority = impact >= criticalThreshold ? 'high' : 'medium';
+    else if (row.duplicate || exactComponentDuplicate) priority = 'high';
+    else if (lowConfidence) priority = 'medium';
     const enrichedRow = {
       ...row,
       grouped,
@@ -699,9 +760,23 @@ function enrichPdfDecisions(records, rowsA, rowsB, rawRowsA = rowsA, rawRowsB = 
       resolved: false,
       note: ''
     };
+    enrichedRow.cause = buildPdfCause(enrichedRow);
+    enrichedRow.checklist = buildPdfChecklist(enrichedRow);
     enrichedRow.action = buildPdfAction(enrichedRow);
     return enrichedRow;
   });
+
+  const baseRows = enriched.filter((row) => !!row.a);
+  const correctBaseRows = baseRows.filter((row) => row.status === 'ok' && !row.needsAction);
+  const locatedBaseRows = baseRows.filter((row) => !!row.b);
+  const missingInDomainRows = enriched.filter((row) => row.status === 'missing-b');
+  const divergentRows = enriched.filter((row) => row.status === 'divergent');
+  const extraDomainRows = enriched.filter((row) => row.status === 'missing-a');
+  const correctRate = rowsA.length ? (correctBaseRows.length / rowsA.length) * 100 : 0;
+  const locatedRate = rowsA.length ? (locatedBaseRows.length / rowsA.length) * 100 : 0;
+  const reconciledSefazValue = correctBaseRows.reduce((sum, row) => sum + (row.a?.value || 0), 0);
+  const valueCorrectRate = totalA ? (reconciledSefazValue / totalA) * 100 : 0;
+
   pdfState.metrics = {
     totalA,
     totalB,
@@ -714,9 +789,21 @@ function enrichPdfDecisions(records, rowsA, rowsB, rawRowsA = rowsA, rawRowsB = 
     groupedRowsA: rawRowsA.length - rowsA.length,
     groupedRowsB: rawRowsB.length - rowsB.length,
     netDifference: totalB - totalA,
-    missingOnlyA: enriched.filter((row) => row.status === 'missing-b').reduce((sum, row) => sum + row.impact, 0),
-    missingOnlyB: enriched.filter((row) => row.status === 'missing-a').reduce((sum, row) => sum + row.impact, 0),
-    divergentSigned: enriched.filter((row) => row.status === 'divergent').reduce((sum, row) => sum + row.signedDifference, 0),
+    missingOnlyA: missingInDomainRows.reduce((sum, row) => sum + row.impact, 0),
+    missingOnlyB: extraDomainRows.reduce((sum, row) => sum + row.impact, 0),
+    divergentSigned: divergentRows.reduce((sum, row) => sum + row.signedDifference, 0),
+    divergentImpact: divergentRows.reduce((sum, row) => sum + row.impact, 0),
+    baseNfs: rowsA.length,
+    domainNfs: rowsB.length,
+    correctBaseCount: correctBaseRows.length,
+    locatedBaseCount: locatedBaseRows.length,
+    missingInDomainCount: missingInDomainRows.length,
+    divergentCount: divergentRows.length,
+    extraDomainCount: extraDomainRows.length,
+    correctRate,
+    locatedRate,
+    reconciledSefazValue,
+    valueCorrectRate,
     criticalThreshold
   };
   return enriched;
@@ -724,6 +811,7 @@ function enrichPdfDecisions(records, rowsA, rowsB, rawRowsA = rowsA, rawRowsB = 
 
 function filteredPdfRows() {
   const priorityRank = { critical: 0, high: 1, medium: 2, ok: 3 };
+  const diagnosisRank = (row) => row.status === 'missing-b' ? 0 : row.status === 'divergent' ? 1 : row.status === 'missing-a' ? 2 : (row.duplicate || row.exactComponentDuplicate || row.lowConfidence) ? 3 : 4;
   return pdfState.records.filter((row) => {
     let filterOk = false;
     if (pdfState.filter === 'all') filterOk = true;
@@ -736,19 +824,18 @@ function filteredPdfRows() {
     else if (pdfState.filter === 'ok') filterOk = !row.needsAction;
     else filterOk = row.status === pdfState.filter;
     const componentText = [...(row.a?.components || []), ...(row.b?.components || [])].map((item) => [item.value, item.date, item.fileName, item.description, item.series].join(' ')).join(' ');
-    const searchable = normalize([row.a?.identifier,row.b?.identifier,row.a?.description,row.b?.description,row.a?.fileName,row.b?.fileName,row.reason,row.action,row.note,componentText].join(' '));
+    const searchable = normalize([row.a?.identifier,row.b?.identifier,row.a?.description,row.b?.description,row.a?.fileName,row.b?.fileName,row.reason,row.cause,row.action,(row.checklist || []).join(' '),row.note,componentText].join(' '));
     return filterOk && (!pdfState.search || searchable.includes(pdfState.search));
   }).sort((a, b) => {
     if (a.resolved !== b.resolved) return a.resolved ? 1 : -1;
-    return (priorityRank[a.priority] - priorityRank[b.priority]) || (b.impact - a.impact) || Number((a.a || a.b)?.identifier || 0) - Number((b.a || b.b)?.identifier || 0);
+    return diagnosisRank(a) - diagnosisRank(b) || (priorityRank[a.priority] - priorityRank[b.priority]) || (b.impact - a.impact) || Number((a.a || a.b)?.identifier || 0) - Number((b.a || b.b)?.identifier || 0);
   });
 }
 
 function renderPdfResults(rowsA, rowsB, rawRowsA = rowsA, rawRowsB = rowsB) {
-  const groupedA = rowsA.filter((row) => row.consolidated).length;
   const groupedB = rowsB.filter((row) => row.consolidated).length;
-  $('#pdfResultSubtitle').textContent = `${rawRowsA.length} lançamento(s) viraram ${rowsA.length} NF(s) no ${pdfState.labels.A}; ${rawRowsB.length} lançamento(s) viraram ${rowsB.length} NF(s) no ${pdfState.labels.B}. ${groupedA + groupedB} NF(s) foram consolidadas automaticamente.`;
-  $('#pdfValidationPanel').innerHTML = `<strong>Consolidação automática ativada:</strong> quando a mesma NF aparece em várias linhas, o Conferinho soma os lançamentos antes de comparar. A chave considera número da NF e, quando disponíveis, CNPJ, série e fornecedor. Abra <b>“Ver composição”</b> para conferir como o total foi formado. “Impacto” mostra somente o valor ainda não explicado.`;
+  $('#pdfResultSubtitle').textContent = `A base oficial contém ${rowsA.length} NF(s). O Domínio contém ${rowsB.length} NF(s) consolidadas a partir de ${rawRowsB.length} lançamento(s); ${groupedB} NF(s) do Domínio precisaram de soma automática.`;
+  $('#pdfValidationPanel').innerHTML = `<strong>Regra desta conciliação:</strong> cada NF da SEFAZ é tratada como uma obrigação de escrituração. O Conferinho procura essa NF no Domínio, soma os desdobramentos e classifica o resultado. Itens que existem somente no Domínio aparecem como verificação complementar, pois não possuem correspondência na base oficial.`;
   refreshPdfDecisionDashboard();
   $('#pdfResults').classList.remove('hidden');
   renderPdfTable();
@@ -757,90 +844,98 @@ function renderPdfResults(rowsA, rowsB, rawRowsA = rowsA, rawRowsB = rowsB) {
 
 function refreshPdfDecisionDashboard() {
   const rows = pdfState.records;
-  const metrics = pdfState.metrics || { totalA: 0, totalB: 0, rowsA: 0, rowsB: 0, netDifference: 0, missingOnlyA: 0, missingOnlyB: 0, divergentSigned: 0 };
-  const ok = rows.filter((row) => !row.needsAction).length;
+  const metrics = pdfState.metrics || { totalA: 0, totalB: 0, rowsA: 0, rowsB: 0, netDifference: 0, missingOnlyA: 0, missingOnlyB: 0, divergentSigned: 0, baseNfs: 0, correctBaseCount: 0, correctRate: 0, missingInDomainCount: 0, divergentCount: 0, extraDomainCount: 0 };
+  const correctBase = rows.filter((row) => row.a && row.status === 'ok' && !row.needsAction).length;
   const divergent = rows.filter((row) => row.status === 'divergent').length;
-  const missing = rows.filter((row) => row.status.startsWith('missing')).length;
-  const grouped = rows.filter((row) => row.grouped).length;
-  const duplicate = rows.filter((row) => row.duplicate || row.exactComponentDuplicate).length;
+  const missingInDomain = rows.filter((row) => row.status === 'missing-b').length;
+  const groupedDomain = rows.filter((row) => row.b?.consolidated).length;
   const resolved = rows.filter((row) => row.needsAction && row.resolved).length;
-  const pendingRows = rows.filter((row) => row.needsAction && !row.resolved);
+  const actionRows = rows.filter((row) => row.needsAction);
+  const pendingRows = actionRows.filter((row) => !row.resolved);
   const criticalRows = pendingRows.filter((row) => row.priority === 'critical');
   const openImpact = pendingRows.reduce((sum, row) => sum + row.impact, 0);
   const reviewRows = pendingRows.filter((row) => row.lowConfidence).length;
+  const extraDomain = rows.filter((row) => row.status === 'missing-a').length;
 
-  $('#pdfTotalCount').textContent = rows.length;
-  $('#pdfOkCount').textContent = ok;
+  $('#pdfTotalCount').textContent = metrics.baseNfs ?? 0;
+  $('#pdfOkCount').textContent = correctBase;
   $('#pdfDivergentCount').textContent = divergent;
-  $('#pdfMissingCount').textContent = missing;
+  $('#pdfMissingCount').textContent = missingInDomain;
+  const extraCounter = $('#pdfExtraCount');
+  if (extraCounter) extraCounter.textContent = extraDomain;
   const groupedCounter = $('#pdfGroupedCount');
-  if (groupedCounter) groupedCounter.textContent = grouped;
-  const duplicateCounter = $('#pdfDuplicateCount');
-  if (duplicateCounter) duplicateCounter.textContent = duplicate;
+  if (groupedCounter) groupedCounter.textContent = groupedDomain;
   $('#pdfPendingCount').textContent = pendingRows.length;
   $('#pdfResolvedCount').textContent = `${resolved} resolvida(s)`;
   $('#pdfPendingBadge').textContent = `${pendingRows.length} pendência(s)`;
 
-  $('#pdfTotalALabel').textContent = `Total ${pdfState.labels.A}`;
-  $('#pdfTotalBLabel').textContent = `Total ${pdfState.labels.B}`;
+  $('#pdfTotalALabel').textContent = 'Base oficial da SEFAZ';
+  $('#pdfTotalBLabel').textContent = 'Total escriturado no Domínio';
   $('#pdfTotalAValue').textContent = money.format(metrics.totalA);
   $('#pdfTotalBValue').textContent = money.format(metrics.totalB);
-  $('#pdfTotalARecords').textContent = `${metrics.rowsA} lançamento(s) → ${metrics.consolidatedA ?? metrics.rowsA} NF(s)`;
-  $('#pdfTotalBRecords').textContent = `${metrics.rowsB} lançamento(s) → ${metrics.consolidatedB ?? metrics.rowsB} NF(s)`;
-  $('#pdfNetDifference').textContent = formatSignedMoney(metrics.netDifference);
+  $('#pdfTotalARecords').textContent = `${metrics.baseNfs || 0} NF(s) oficiais em ${metrics.rowsA || 0} linha(s)`;
+  $('#pdfTotalBRecords').textContent = `${metrics.rowsB || 0} lançamento(s) → ${metrics.domainNfs || 0} NF(s); ${extraDomain} extra(s)`;
+  $('#pdfNetDifference').textContent = `${(metrics.correctRate || 0).toFixed(1).replace('.', ',')}%`;
+  $('#pdfNetDirection').textContent = `${metrics.correctBaseCount || 0} de ${metrics.baseNfs || 0} NFs da SEFAZ corretas no Domínio`;
   $('#pdfOpenImpact').textContent = money.format(openImpact);
   const netCard = $('#pdfNetCard');
-  netCard.classList.toggle('positive', metrics.netDifference > 0.009);
-  netCard.classList.toggle('negative', metrics.netDifference < -0.009);
-  $('#pdfNetDirection').textContent = Math.abs(metrics.netDifference) <= 0.009
-    ? 'Os totais gerais estão equilibrados'
-    : metrics.netDifference > 0
-      ? `${pdfState.labels.B} está maior que ${pdfState.labels.A}`
-      : `${pdfState.labels.A} está maior que ${pdfState.labels.B}`;
+  netCard.classList.remove('positive','negative');
+  netCard.classList.toggle('coverage-good', (metrics.correctRate || 0) >= 99.99);
+  netCard.classList.toggle('coverage-warning', (metrics.correctRate || 0) < 99.99 && (metrics.correctRate || 0) >= 80);
+  netCard.classList.toggle('coverage-danger', (metrics.correctRate || 0) < 80);
 
   const decisionCard = $('#pdfDecisionCard');
   decisionCard.classList.remove('decision-success','decision-warning','decision-danger');
-  if (!pendingRows.length) {
+  const coverageText = `${(metrics.correctRate || 0).toFixed(1).replace('.', ',')}% da base oficial está correta no Domínio`;
+  if (!pendingRows.length && !actionRows.length) {
     decisionCard.classList.add('decision-success');
     $('#pdfDecisionIcon').textContent = '✓';
-    $('#pdfDecisionLevel').textContent = 'CONCILIADO';
-    $('#pdfDecisionTitle').textContent = 'Nenhuma pendência ficou em aberto.';
-    $('#pdfDecisionText').textContent = `Os registros foram conciliados entre ${pdfState.labels.A} e ${pdfState.labels.B}. ${grouped} NF(s) precisaram de soma automática e o valor pendente é R$ 0,00.`;
-    $('#pdfDecisionNext').innerHTML = '<strong>Próximo passo</strong><span>Salve ou imprima o relatório como evidência da conferência.</span>';
+    $('#pdfDecisionLevel').textContent = 'ESCRITURAÇÃO CONCILIADA';
+    $('#pdfDecisionTitle').textContent = 'O Domínio reproduz integralmente a base da SEFAZ.';
+    $('#pdfDecisionText').textContent = `${metrics.baseNfs || 0} NF(s) oficiais foram localizadas com os valores corretos. ${groupedDomain} NF(s) precisaram de soma automática e nenhuma diferença foi encontrada.`;
+    $('#pdfDecisionNext').innerHTML = '<strong>Próximo passo</strong><span>Salve o relatório como evidência da conferência e prossiga com o fechamento fiscal.</span>';
+  } else if (!pendingRows.length && actionRows.length) {
+    decisionCard.classList.add('decision-warning');
+    $('#pdfDecisionIcon').textContent = '↻';
+    $('#pdfDecisionLevel').textContent = 'PENDÊNCIAS TRATADAS — REVALIDAR';
+    $('#pdfDecisionTitle').textContent = 'Todas as ocorrências foram marcadas como resolvidas.';
+    $('#pdfDecisionText').textContent = `O relatório original possuía ${actionRows.length} diferença(s). Depois de corrigir o Domínio, gere um novo relatório e faça a conciliação novamente para confirmar que a base chegou a 100%.`;
+    $('#pdfDecisionNext').innerHTML = '<strong>Próximo passo</strong><span>Reemita o relatório do Domínio após as correções e rode uma nova auditoria. Marcar como resolvida registra o tratamento, mas não altera os arquivos já analisados.</span>';
   } else if (criticalRows.length) {
     decisionCard.classList.add('decision-danger');
     $('#pdfDecisionIcon').textContent = '!';
-    $('#pdfDecisionLevel').textContent = 'AÇÃO IMEDIATA';
-    $('#pdfDecisionTitle').textContent = `${criticalRows.length} ocorrência(s) crítica(s) antes do fechamento.`;
-    $('#pdfDecisionText').textContent = `Há ${pendingRows.length} pendência(s), com ${money.format(openImpact)} de impacto bruto a explicar. Comece pelas notas críticas e pelas ausentes.`;
-    $('#pdfDecisionNext').innerHTML = `<strong>Ordem recomendada</strong><span>1. Críticas e duplicadas · 2. Notas ausentes · 3. Valores divergentes${reviewRows ? ' · 4. Leituras com baixa confiança' : ''}</span>`;
+    $('#pdfDecisionLevel').textContent = 'NÃO FECHAR AINDA';
+    $('#pdfDecisionTitle').textContent = `${coverageText}.`;
+    $('#pdfDecisionText').textContent = `Faltam ${missingInDomain} NF(s) da SEFAZ no Domínio, ${divergent} possuem valor incorreto e ${extraDomain} lançamento(s) existem somente no Domínio. Há ${money.format(openImpact)} ainda sem explicação.`;
+    $('#pdfDecisionNext').innerHTML = `<strong>Ordem de investigação</strong><span>1. NFs da SEFAZ não escrituradas · 2. Valores incorretos no Domínio · 3. Duplicidades e leitura · 4. Lançamentos extras no Domínio${reviewRows ? ' · 5. Confirmar leituras incertas' : ''}</span>`;
   } else {
     decisionCard.classList.add('decision-warning');
     $('#pdfDecisionIcon').textContent = '→';
-    $('#pdfDecisionLevel').textContent = 'REVISÃO NECESSÁRIA';
-    $('#pdfDecisionTitle').textContent = `${pendingRows.length} pendência(s) precisam de tratamento.`;
-    $('#pdfDecisionText').textContent = `O impacto bruto pendente é ${money.format(openImpact)}. Resolva primeiro as notas ausentes ou duplicadas e depois confirme os valores divergentes.`;
-    $('#pdfDecisionNext').innerHTML = '<strong>Próximo passo</strong><span>Abra cada NF/XML, corrija o lado incorreto e marque a ocorrência como resolvida.</span>';
+    $('#pdfDecisionLevel').textContent = 'REVISAR ANTES DO FECHAMENTO';
+    $('#pdfDecisionTitle').textContent = `${coverageText}.`;
+    $('#pdfDecisionText').textContent = `A escrituração ainda possui ${pendingRows.length} pendência(s): ${missingInDomain} não escriturada(s), ${divergent} com valor incorreto e ${extraDomain} extra(s) no Domínio.`;
+    $('#pdfDecisionNext').innerHTML = '<strong>Próximo passo</strong><span>Abra cada ocorrência, valide a causa provável, corrija o Domínio ou documente a justificativa e marque como resolvida.</span>';
   }
 
+  const diagnosisRank = (row) => row.status === 'missing-b' ? 0 : row.status === 'divergent' ? 1 : row.status === 'missing-a' ? 2 : 3;
   const priorityList = $('#pdfPriorityList');
-  const ranked = [...pendingRows].sort((a,b) => ({critical:0,high:1,medium:2,ok:3}[a.priority]-({critical:0,high:1,medium:2,ok:3}[b.priority]) || b.impact-a.impact)).slice(0,5);
+  const ranked = [...pendingRows].sort((a,b) => diagnosisRank(a)-diagnosisRank(b) || ({critical:0,high:1,medium:2,ok:3}[a.priority]-({critical:0,high:1,medium:2,ok:3}[b.priority])) || b.impact-a.impact).slice(0,5);
   priorityList.innerHTML = ranked.length ? ranked.map((row) => {
     const source = row.a || row.b;
-    return `<button class="priority-item priority-${row.priority}" type="button" data-focus-record="${escapeHtml(row.id)}"><span class="priority-marker"></span><span class="priority-copy"><strong>NF ${escapeHtml(source?.identifier || '—')} · ${escapeHtml(pdfStatusLabel(row.status, row.grouped))}</strong><small>${escapeHtml(row.action)}</small></span><b>${row.impact ? money.format(row.impact) : 'Revisar'}</b></button>`;
-  }).join('') : '<div class="priority-empty"><span>✓</span><strong>Nenhuma ação pendente</strong><small>Tudo o que precisava de revisão foi resolvido.</small></div>';
+    return `<button class="priority-item priority-${row.priority}" type="button" data-focus-record="${escapeHtml(row.id)}"><span class="priority-marker"></span><span class="priority-copy"><strong>NF ${escapeHtml(source?.identifier || '—')} · ${escapeHtml(pdfStatusLabel(row.status, row.grouped))}</strong><small><b>${escapeHtml(row.cause)}</b> ${escapeHtml(row.action)}</small></span><b>${row.impact ? money.format(row.impact) : 'Revisar'}</b></button>`;
+  }).join('') : '<div class="priority-empty"><span>✓</span><strong>Nenhuma ação pendente</strong><small>A escrituração do Domínio está conciliada com a base SEFAZ.</small></div>';
 
   $('#pdfReconciliationText').textContent = Math.abs(metrics.netDifference) <= 0.009
-    ? 'Os totais gerais são iguais, mas ainda podem existir notas ausentes em lados opostos ou divergências que se compensam. Por isso, avalie também o impacto bruto e não apenas o total final.'
-    : `A diferença líquida entre os totais é ${money.format(Math.abs(metrics.netDifference))}. A composição abaixo mostra de onde esse valor vem.`;
+    ? 'Os totais gerais podem estar iguais mesmo com erros que se compensam. A composição abaixo separa o que falta no Domínio, os valores incorretos e os lançamentos sem base na SEFAZ.'
+    : `O total do Domínio difere da SEFAZ em ${money.format(Math.abs(metrics.netDifference))}. A composição abaixo mostra quais tipos de ocorrência formam essa diferença.`;
   $('#pdfReconciliationEquation').innerHTML = `
-    <span><small>Só no ${escapeHtml(pdfState.labels.A)}</small><b>− ${money.format(metrics.missingOnlyA)}</b></span>
+    <span><small>SEFAZ não escriturada</small><b>− ${money.format(metrics.missingOnlyA)}</b></span>
     <i>+</i>
-    <span><small>Divergências de valor</small><b>${formatSignedMoney(metrics.divergentSigned)}</b></span>
+    <span><small>Valores incorretos no Domínio</small><b>${formatSignedMoney(metrics.divergentSigned)}</b></span>
     <i>+</i>
-    <span><small>Só no ${escapeHtml(pdfState.labels.B)}</small><b>+ ${money.format(metrics.missingOnlyB)}</b></span>
+    <span><small>Lançamentos extras no Domínio</small><b>+ ${money.format(metrics.missingOnlyB)}</b></span>
     <i>=</i>
-    <span class="equation-total"><small>Diferença líquida</small><b>${formatSignedMoney(metrics.netDifference)}</b></span>`;
+    <span class="equation-total"><small>Diferença final Domínio − SEFAZ</small><b>${formatSignedMoney(metrics.netDifference)}</b></span>`;
 }
 
 function pdfCompositionSideHtml(record, label) {
@@ -863,27 +958,28 @@ function renderPdfTable() {
     const supplierB = row.b?.description || '';
     const supplierText = supplierA && supplierB && normalize(supplierA) !== normalize(supplierB) ? `${supplierA} / ${supplierB}` : supplierA || supplierB || 'Fornecedor não identificado';
     const statusClass = row.status === 'ok' ? 'status-ok' : row.status === 'divergent' ? 'status-divergent' : 'status-missing';
-    const extraBadges = `${row.grouped ? '<span class="status-badge status-grouped">Σ Lançamentos somados</span>' : ''}${row.duplicate ? '<span class="status-badge status-duplicate">Mesmo nº em grupos diferentes</span>' : ''}${row.exactComponentDuplicate ? '<span class="status-badge status-review">Repetição idêntica</span>' : ''}${row.lowConfidence ? `<span class="status-badge status-review">Leitura ${row.confidence}%</span>` : ''}`;
+    const extraBadges = `${row.grouped ? '<span class="status-badge status-grouped">Σ Domínio consolidado</span>' : ''}${row.duplicate ? '<span class="status-badge status-duplicate">Mesmo nº em grupos diferentes</span>' : ''}${row.exactComponentDuplicate ? '<span class="status-badge status-review">Possível duplicidade</span>' : ''}${row.lowConfidence ? `<span class="status-badge status-review">Leitura ${row.confidence}%</span>` : ''}`;
     const valueA = row.a?.value == null ? '—' : money.format(row.a.value);
     const valueB = row.b?.value == null ? '—' : money.format(row.b.value);
     const countA = row.a?.componentCount || (row.a ? 1 : 0);
     const countB = row.b?.componentCount || (row.b ? 1 : 0);
-    const deltaText = row.status === 'divergent' ? `Diferença: ${formatSignedMoney(row.signedDifference)}` : row.status === 'ok' ? (row.grouped ? 'Total consolidado igual nos dois lados' : 'Mesmo valor nos dois lados') : `Valor presente: ${money.format(row.impact)}`;
-    const detailText = [row.a?.date ? `${pdfState.labels.A}: ${row.a.date}` : '', row.b?.date ? `${pdfState.labels.B}: ${row.b.date}` : '', row.a?.fileName || '', row.b?.fileName || ''].filter(Boolean).join(' · ');
+    const deltaText = row.status === 'divergent' ? `Domínio − SEFAZ: ${formatSignedMoney(row.signedDifference)}` : row.status === 'ok' ? (row.grouped ? 'Soma do Domínio igual ao valor oficial' : 'Valor correto no Domínio') : row.status === 'missing-b' ? `Falta escriturar: ${money.format(row.impact)}` : `Valor sem base SEFAZ: ${money.format(row.impact)}`;
+    const detailText = [row.a?.date ? `SEFAZ: ${row.a.date}` : '', row.b?.date ? `Domínio: ${row.b.date}` : '', row.a?.fileName || '', row.b?.fileName || ''].filter(Boolean).join(' · ');
     const compositionCount = countA + countB;
     const detailsContent = row.grouped
-      ? `<div class="composition-grid">${pdfCompositionSideHtml(row.a, pdfState.labels.A)}${pdfCompositionSideHtml(row.b, pdfState.labels.B)}</div>`
+      ? `<div class="composition-grid">${pdfCompositionSideHtml(row.a, 'SEFAZ — base oficial')}${pdfCompositionSideHtml(row.b, 'Domínio — escrituração')}</div>`
       : `<span>${escapeHtml(detailText || 'Sem detalhes adicionais')}</span>`;
+    const checklist = (row.checklist || []).map((item) => `<li>${escapeHtml(item)}</li>`).join('');
     const tr = document.createElement('tr');
     tr.dataset.recordId = row.id;
     tr.classList.toggle('decision-row-resolved', row.resolved);
     tr.innerHTML = `
       <td><span class="priority-badge priority-${row.priority}">${escapeHtml(pdfPriorityLabel(row.priority))}</span></td>
       <td><span class="status-badge ${statusClass}">${escapeHtml(pdfStatusLabel(row.status, row.grouped))}</span>${extraBadges}<strong class="decision-nf">NF ${escapeHtml(source?.identifier || '—')}</strong><span class="decision-supplier" title="${escapeHtml(supplierText)}">${escapeHtml(supplierText)}</span>${source?.series ? `<small class="decision-series">Série ${escapeHtml(source.series)}</small>` : ''}</td>
-      <td><div class="value-compare"><span><small>${escapeHtml(pdfState.labels.A)}</small><b>${valueA}</b>${countA > 1 ? `<em>${countA} lançamentos somados</em>` : ''}</span><span class="value-arrow">→</span><span><small>${escapeHtml(pdfState.labels.B)}</small><b>${valueB}</b>${countB > 1 ? `<em>${countB} lançamentos somados</em>` : ''}</span></div><span class="value-delta">${escapeHtml(deltaText)}</span><details class="record-details ${row.grouped ? 'composition-details' : ''}"><summary>${row.grouped ? `Ver composição (${compositionCount} lançamentos)` : 'Ver datas e arquivos'}</summary>${detailsContent}</details></td>
+      <td><div class="value-compare"><span><small>SEFAZ · deveria estar</small><b>${valueA}</b>${countA > 1 ? `<em>${countA} registros consolidados</em>` : ''}</span><span class="value-arrow">→</span><span><small>Domínio · foi escriturado</small><b>${valueB}</b>${countB > 1 ? `<em>${countB} lançamentos somados</em>` : ''}</span></div><span class="value-delta">${escapeHtml(deltaText)}</span><details class="record-details ${row.grouped ? 'composition-details' : ''}"><summary>${row.grouped ? `Ver composição (${compositionCount} registros)` : 'Ver datas e arquivos'}</summary>${detailsContent}</details></td>
       <td class="align-right"><strong class="impact-value">${row.impact ? money.format(row.impact) : '—'}</strong></td>
-      <td><span class="action-text">${escapeHtml(row.action)}</span></td>
-      <td><label class="resolution-check"><input type="checkbox" data-resolve-record="${escapeHtml(row.id)}" ${row.resolved ? 'checked' : ''}/><span>${row.resolved ? 'Resolvida' : 'Pendente'}</span></label><textarea class="resolution-note" data-note-record="${escapeHtml(row.id)}" rows="2" placeholder="Anotação: o que foi verificado ou corrigido">${escapeHtml(row.note || '')}</textarea></td>`;
+      <td><strong class="diagnosis-cause">${escapeHtml(row.cause || '')}</strong><span class="action-text">${escapeHtml(row.action)}</span><details class="investigation-details"><summary>O que conferir</summary><ol>${checklist}</ol></details></td>
+      <td><label class="resolution-check"><input type="checkbox" data-resolve-record="${escapeHtml(row.id)}" ${row.resolved ? 'checked' : ''}/><span>${row.resolved ? 'Resolvida' : 'Pendente'}</span></label><textarea class="resolution-note" data-note-record="${escapeHtml(row.id)}" rows="2" placeholder="Registre a causa encontrada e a correção realizada">${escapeHtml(row.note || '')}</textarea></td>`;
     tbody.appendChild(tr);
   });
   $('#pdfEmptyResults').classList.toggle('hidden', rows.length > 0);
@@ -932,31 +1028,35 @@ function buildPdfExecutiveSummary() {
   const pending = pdfState.records.filter((row) => row.needsAction && !row.resolved);
   const critical = pending.filter((row) => row.priority === 'critical');
   const openImpact = pending.reduce((sum, row) => sum + row.impact, 0);
-  const top = [...pending].sort((a,b) => ({critical:0,high:1,medium:2,ok:3}[a.priority]-({critical:0,high:1,medium:2,ok:3}[b.priority]) || b.impact-a.impact)).slice(0,5);
+  const diagnosisRank = (row) => row.status === 'missing-b' ? 0 : row.status === 'divergent' ? 1 : row.status === 'missing-a' ? 2 : 3;
+  const top = [...pending].sort((a,b) => diagnosisRank(a)-diagnosisRank(b) || b.impact-a.impact).slice(0,5);
   const lines = [
-    'CONFERINHO — RESUMO DA CONFERÊNCIA',
-    `${pdfState.labels.A} x ${pdfState.labels.B}`,
+    'CONFERINHO — CONCILIAÇÃO DE ENTRADAS',
+    'Base oficial: SEFAZ | Escrituração auditada: Domínio',
     '',
-    `Total ${pdfState.labels.A}: ${money.format(metrics.totalA)} (${metrics.rowsA} lançamentos → ${metrics.consolidatedA ?? metrics.rowsA} NFs)`,
-    `Total ${pdfState.labels.B}: ${money.format(metrics.totalB)} (${metrics.rowsB} lançamentos → ${metrics.consolidatedB ?? metrics.rowsB} NFs)`,
-    `NFs com lançamentos somados: ${pdfState.records.filter((row) => row.grouped).length}`, 
-    `Diferença líquida: ${formatSignedMoney(metrics.netDifference)}`,
+    `Base SEFAZ: ${money.format(metrics.totalA)} em ${metrics.baseNfs || 0} NF(s)`,
+    `Total Domínio: ${money.format(metrics.totalB)} em ${metrics.domainNfs || 0} NF(s) consolidadas`,
+    `Conciliação correta da base: ${(metrics.correctRate || 0).toFixed(1).replace('.', ',')}% (${metrics.correctBaseCount || 0} de ${metrics.baseNfs || 0} NFs)`,
+    `Não escrituradas no Domínio: ${metrics.missingInDomainCount || 0}`,
+    `Com valor incorreto: ${metrics.divergentCount || 0}`,
+    `Lançamentos extras no Domínio: ${metrics.extraDomainCount || 0}`,
+    `Diferença final Domínio − SEFAZ: ${formatSignedMoney(metrics.netDifference)}`,
     `Pendências abertas: ${pending.length}`,
     `Ocorrências críticas: ${critical.length}`,
-    `Valor que exige conferência: ${money.format(openImpact)}`,
+    `Valor ainda sem explicação: ${money.format(openImpact)}`,
     ''
   ];
-  if (!pending.length) lines.push('Conclusão: relatórios conciliados, sem pendências abertas.');
+  if (!pending.length) lines.push('Conclusão: a escrituração do Domínio está conciliada com a base oficial da SEFAZ.');
   else {
-    lines.push('PRIORIDADES:');
-    top.forEach((row, index) => lines.push(`${index + 1}. NF ${(row.a || row.b)?.identifier || '—'} — ${pdfStatusLabel(row.status, row.grouped)} — ${row.impact ? money.format(row.impact) : 'revisar leitura'}. ${row.action}`));
+    lines.push('PRIORIDADES DE INVESTIGAÇÃO:');
+    top.forEach((row, index) => lines.push(`${index + 1}. NF ${(row.a || row.b)?.identifier || '—'} — ${pdfStatusLabel(row.status, row.grouped)} — ${row.impact ? money.format(row.impact) : 'revisar leitura'}. Causa provável: ${row.cause} Ação: ${row.action}`));
   }
   return lines.join('\n');
 }
 
 async function copyPdfExecutiveSummary() {
   const text = buildPdfExecutiveSummary();
-  if (!text) return showToast('Faça uma comparação antes de copiar o resumo.', true);
+  if (!text) return showToast('Faça a conciliação de entradas antes de copiar o resumo.', true);
   try {
     await navigator.clipboard.writeText(text);
     showToast('Resumo executivo copiado.');
@@ -979,19 +1079,26 @@ function pdfCompositionText(record) {
 }
 
 function exportPdfCsv() {
-  if (!pdfState.records.length || !pdfState.metrics) return showToast('Faça uma comparação antes de exportar.', true);
+  if (!pdfState.records.length || !pdfState.metrics) return showToast('Faça a conciliação de entradas antes de exportar.', true);
   const m = pdfState.metrics;
   const pending = pdfState.records.filter((row) => row.needsAction && !row.resolved);
   const rows = [
-    ['CONFERINHO — PLANO DE AÇÃO DA CONFERÊNCIA'],
-    ['Comparação', `${pdfState.labels.A} x ${pdfState.labels.B}`],
-    [`Total ${pdfState.labels.A}`, m.totalA.toFixed(2).replace('.',',')],
-    [`Total ${pdfState.labels.B}`, m.totalB.toFixed(2).replace('.',',')],
-    ['Diferença líquida', m.netDifference.toFixed(2).replace('.',',')],
+    ['CONFERINHO — CONCILIAÇÃO DE ENTRADAS | DIAGNÓSTICO E PLANO DE AÇÃO'],
+    ['Base oficial', 'SEFAZ'],
+    ['Escrituração auditada', 'Domínio'],
+    ['Total SEFAZ', m.totalA.toFixed(2).replace('.',',')],
+    ['Total Domínio', m.totalB.toFixed(2).replace('.',',')],
+    ['Conciliação correta da base (%)', (m.correctRate || 0).toFixed(2).replace('.',',')],
+    ['NFs na base SEFAZ', m.baseNfs || 0],
+    ['NFs corretas no Domínio', m.correctBaseCount || 0],
+    ['Não escrituradas no Domínio', m.missingInDomainCount || 0],
+    ['Com valor incorreto', m.divergentCount || 0],
+    ['Extras no Domínio', m.extraDomainCount || 0],
+    ['Diferença final Domínio - SEFAZ', m.netDifference.toFixed(2).replace('.',',')],
     ['Pendências abertas', pending.length],
-    ['Valor que exige conferência', pending.reduce((sum,row)=>sum+row.impact,0).toFixed(2).replace('.',',')],
+    ['Valor ainda sem explicação', pending.reduce((sum,row)=>sum+row.impact,0).toFixed(2).replace('.',',')],
     [],
-    ['Prioridade','Situação','Número da NF',`Valor consolidado ${pdfState.labels.A}`,`Valor consolidado ${pdfState.labels.B}`,`Lançamentos ${pdfState.labels.A}`,`Lançamentos ${pdfState.labels.B}`,'NF agrupada','Composição Relatório 1','Composição Relatório 2','Impacto','Diferença assinada','Fornecedor / descrição','Próxima ação','Andamento','Anotação','Confiança da leitura','Possível repetição para revisar',`Data ${pdfState.labels.A}`,`Data ${pdfState.labels.B}`,`Arquivo ${pdfState.labels.A}`,`Arquivo ${pdfState.labels.B}`]
+    ['Prioridade','Diagnóstico','Número da NF','Valor oficial SEFAZ','Valor escriturado Domínio','Lançamentos SEFAZ','Lançamentos Domínio','Domínio consolidado','Composição SEFAZ','Composição Domínio','Diferença / impacto','Domínio - SEFAZ','Fornecedor / descrição','Causa provável','O que conferir','Ação recomendada','Tratamento','Anotação','Confiança da leitura','Possível repetição','Data SEFAZ','Data Domínio','Arquivo SEFAZ','Arquivo Domínio']
   ];
   pdfState.records.forEach((row) => rows.push([
     pdfPriorityLabel(row.priority),
@@ -1001,14 +1108,16 @@ function exportPdfCsv() {
     row.b?.value?.toFixed(2).replace('.',',') || '',
     row.a?.componentCount || (row.a ? 1 : 0),
     row.b?.componentCount || (row.b ? 1 : 0),
-    row.grouped ? 'Sim' : 'Não',
+    row.b?.consolidated ? 'Sim' : 'Não',
     pdfCompositionText(row.a),
     pdfCompositionText(row.b),
     row.impact?.toFixed(2).replace('.',',') || '0,00',
     row.signedDifference?.toFixed(2).replace('.',',') || '0,00',
     row.a?.description || row.b?.description || '',
+    row.cause || '',
+    (row.checklist || []).join(' | '),
     row.action,
-    row.resolved ? 'Resolvida' : row.needsAction ? 'Pendente' : 'Conferida',
+    row.resolved ? 'Resolvida' : row.needsAction ? 'Pendente' : 'Correta',
     row.note || '',
     `${row.confidence}%`,
     row.duplicate || row.exactComponentDuplicate ? 'Sim' : 'Não',
@@ -1017,12 +1126,12 @@ function exportPdfCsv() {
     row.a?.fileName || '',
     row.b?.fileName || ''
   ]));
-  downloadCsv(`conferinho-plano-de-acao-${new Date().toISOString().slice(0,10)}.csv`, rows);
+  downloadCsv(`conferinho-conciliacao-entradas-${new Date().toISOString().slice(0,10)}.csv`, rows);
 }
 
 function resetPdf() {
-  pdfState.filesA=[];pdfState.filesB=[];pdfState.records=[];pdfState.filter='all';pdfState.search='';pdfState.metrics=null;pdfState.labels={A:'Relatório 1',B:'Relatório 2'};
-  $('#reportAInput').value='';$('#reportBInput').value='';$('#reportAFileList').innerHTML='';$('#reportBFileList').innerHTML='';$('#reportALabel').value='Relatório 1';$('#reportBLabel').value='Relatório 2';$('#pdfSearchInput').value='';$('#pdfResults').classList.add('hidden');$('#pdfProgress').classList.add('hidden');$('#compareBtn').disabled=true;$('#pdfStatusHint').textContent='Estou esperando pelo menos um PDF em cada campo.';showToast('Comparação limpa.');
+  pdfState.filesA=[];pdfState.filesB=[];pdfState.records=[];pdfState.filter='all';pdfState.search='';pdfState.metrics=null;pdfState.labels={A:'SEFAZ',B:'Domínio'};
+  $('#reportAInput').value='';$('#reportBInput').value='';$('#reportAFileList').innerHTML='';$('#reportBFileList').innerHTML='';$('#reportALabel').value='SEFAZ';$('#reportBLabel').value='Domínio';$('#pdfSearchInput').value='';$('#pdfResults').classList.add('hidden');$('#pdfProgress').classList.add('hidden');$('#compareBtn').disabled=true;$('#pdfStatusHint').textContent='Envie a base oficial da SEFAZ e o relatório de entradas do Domínio.';showToast('Conciliação de entradas limpa.');
 }
 
 

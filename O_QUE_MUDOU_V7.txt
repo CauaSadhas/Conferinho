@@ -1,0 +1,49 @@
+CONFERINHO V7 — O QUE MUDOU
+
+1. O módulo passou a se chamar “Conciliação de Entradas”.
+
+2. A lógica ficou direcionada:
+   - SEFAZ = fonte oficial.
+   - Domínio = escrituração que precisa reproduzir a SEFAZ.
+
+3. O sistema agora mede a conciliação da base:
+   - quantidade de NFs oficiais;
+   - percentual correto no Domínio;
+   - NFs não escrituradas;
+   - NFs com valor incorreto;
+   - lançamentos extras no Domínio;
+   - valor financeiro ainda sem explicação.
+
+4. Os diagnósticos ficaram objetivos:
+   - Escriturada corretamente.
+   - Correta após soma.
+   - Não escriturada no Domínio.
+   - Valor incorreto no Domínio.
+   - Lançamento extra no Domínio.
+
+5. Para cada pendência, o relatório mostra:
+   - causa provável;
+   - lista do que conferir;
+   - ação recomendada;
+   - prioridade;
+   - campo de anotação;
+   - opção de marcar como resolvida.
+
+6. A ordem de investigação prioriza:
+   1º NFs da SEFAZ ausentes no Domínio;
+   2º valores incorretos;
+   3º duplicidades e leituras incertas;
+   4º lançamentos extras no Domínio.
+
+7. A consolidação automática permanece ativa:
+   lançamentos divididos da mesma NF no Domínio são somados antes da comparação.
+
+8. Marcar uma ocorrência como resolvida não altera o PDF analisado.
+   O painel orienta gerar um novo relatório do Domínio e reprocessar para confirmar 100%.
+
+9. O CSV passou a incluir:
+   - causa provável;
+   - verificações sugeridas;
+   - ação recomendada;
+   - percentual de conciliação da base;
+   - situação de tratamento.

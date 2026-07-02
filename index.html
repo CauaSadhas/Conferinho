@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Conferinho: comparador de relatórios, analisador de XML de NFS-e e somador de notas em imagens e PDFs." />
-  <title>Conferinho — Conferência Fiscal</title>
+  <meta name="description" content="Conferinho: conciliação fiscal de entradas usando a SEFAZ como base oficial para auditar a escrituração do Domínio." />
+  <title>Conferinho — Conciliação de Entradas</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -17,7 +17,7 @@
       <span><span class="brand">Conferinho</span><span class="brand-subtitle">Compara. Confere. Dá certo.</span></span>
     </a>
     <nav class="module-nav" aria-label="Módulos do Conferinho">
-      <button class="module-button active" data-module="pdf" type="button"><span>⇄</span> Comparador de relatórios</button>
+      <button class="module-button active" data-module="pdf" type="button"><span>NF-e</span> Conciliação de Entradas</button>
       <button class="module-button" data-module="nfse" type="button"><span>XML</span> Analisador NFS-e</button>
       <button class="module-button" data-module="sum" type="button"><span>Σ</span> Somador de NFs</button>
     </nav>
@@ -28,10 +28,10 @@
     <section class="hero">
       <div class="hero-copy">
         <span class="eyebrow"><span class="eyebrow-dot"></span> SEU ASSISTENTE DE CONFERÊNCIA</span>
-        <h1 id="heroTitle">O <span>Conferinho</span> mostra a diferença e o que fazer depois.</h1>
-        <p id="heroText">Envie dois relatórios. O Conferinho cruza cada NF, calcula o impacto financeiro e entrega um plano de ação por prioridade.</p>
+        <h1 id="heroTitle">A <span>SEFAZ é a base</span>. O Domínio precisa bater.</h1>
+        <p id="heroText">Envie a base oficial da SEFAZ. O Conferinho procura cada NF no Domínio, soma os desdobramentos e mostra por que a escrituração não está batendo.</p>
         <div class="hero-benefits" id="heroBenefits">
-          <span><b>✓</b> Comparação por número da NF</span><span><b>✓</b> Impacto financeiro</span><span><b>✓</b> Plano de ação exportável</span>
+          <span><b>✓</b> SEFAZ como fonte oficial</span><span><b>✓</b> Domínio auditado por NF</span><span><b>✓</b> Causa provável e ação</span>
         </div>
       </div>
       <div class="hero-visual" aria-label="Mascote Conferinho">
@@ -40,65 +40,99 @@
           <img src="assets/mascote-conferinho.jpg" alt="Mascote Conferinho" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
           <div class="mascot-fallback" hidden>🤖</div>
         </div>
-        <div class="mascot-message"><span class="message-check">✓</span><div><strong>Olá, eu sou o Conferinho!</strong><small id="mascotMessage">Eu encontro a diferença e também mostro por onde você deve começar.</small></div></div>
+        <div class="mascot-message"><span class="message-check">✓</span><div><strong>Olá, eu sou o Conferinho!</strong><small id="mascotMessage">Eu parto da SEFAZ, audito o Domínio e mostro onde investigar cada diferença.</small></div></div>
       </div>
     </section>
 
     <section id="pdfModule" class="module-section">
-      <div class="flow-intro"><span class="flow-kicker">COMPARADOR</span><h2>Cada NF é procurada no outro relatório, independentemente da posição.</h2><p>O Conferinho identifica o número da nota e o valor em cada lado, mesmo quando a ordem está diferente.</p></div>
-      <section class="upload-grid">
-        <article class="panel upload-panel">
-          <div class="panel-heading"><div class="step-number">1</div><div><span class="panel-kicker">PRIMEIRO LADO</span><h2>Relatório 1</h2><p>Arquivo usado como referência.</p></div><span class="multi-badge">1 ou vários PDFs</span></div>
-          <label class="report-name-field"><span>Como este relatório deve aparecer no resultado?</span><input id="reportALabel" type="text" value="Relatório 1" maxlength="40" placeholder="Ex.: Sistema Domínio" /></label>
-          <label class="dropzone" id="reportADropzone" for="reportAInput"><input id="reportAInput" type="file" accept="application/pdf,.pdf" multiple /><span class="drop-icon">⇧</span><strong>Solte aqui o Relatório 1</strong><span>ou clique para selecionar os PDFs</span><em>Qualquer origem ou layout</em></label>
+      <div class="flow-intro entry-intro"><span class="flow-kicker">CONCILIAÇÃO FISCAL DE ENTRADAS</span><h2>Primeiro montamos a base da SEFAZ. Depois auditamos o Domínio.</h2><p>A pergunta central é simples: tudo o que consta na SEFAZ foi escriturado corretamente no Domínio?</p></div>
+
+      <div class="source-truth-banner"><span>BASE OFICIAL</span><div><strong>A SEFAZ define o que deveria estar escriturado.</strong><small>O Domínio é conferido contra essa base. Diferenças viram pendências de investigação, não apenas números soltos.</small></div></div>
+
+      <div class="entry-workflow" aria-label="Etapas da conciliação de entradas">
+        <div class="workflow-card workflow-sefaz"><span>1</span><div><strong>Construir a base SEFAZ</strong><small>Lista oficial das NFs que deveriam constar</small></div></div>
+        <div class="workflow-arrow" aria-hidden="true">→</div>
+        <div class="workflow-card workflow-dominio"><span>2</span><div><strong>Auditar o Domínio</strong><small>Localizar cada NF e conferir o valor</small></div></div>
+        <div class="workflow-arrow" aria-hidden="true">→</div>
+        <div class="workflow-card workflow-result"><span>3</span><div><strong>Investigar e corrigir</strong><small>Causa provável, prioridade e próxima ação</small></div></div>
+      </div>
+
+      <section class="upload-grid entry-upload-grid">
+        <article class="panel upload-panel source-panel source-panel-sefaz">
+          <div class="source-ribbon">BASE OFICIAL</div>
+          <div class="panel-heading"><div class="step-number">1</div><div><span class="panel-kicker">PORTAL / RELATÓRIO OFICIAL</span><h2>Relatório SEFAZ</h2><p>Notas fiscais de entrada disponíveis na SEFAZ.</p></div><span class="multi-badge">1 ou vários PDFs</span></div>
+          <input id="reportALabel" type="hidden" value="SEFAZ" />
+          <div class="source-guide">
+            <div><span>Envie, de preferência</span><strong>Relatório de entradas ou documentos fiscais</strong></div>
+            <div><span>O Conferinho procura</span><strong>Nº da NF + Total NF</strong></div>
+          </div>
+          <label class="dropzone" id="reportADropzone" for="reportAInput"><input id="reportAInput" type="file" accept="application/pdf,.pdf" multiple /><span class="drop-icon">SEFAZ</span><strong>Solte aqui o relatório da SEFAZ</strong><span>ou clique para selecionar um ou vários PDFs</span><em>Esta será a base oficial da comparação</em></label>
           <div class="file-list" id="reportAFileList"></div>
         </article>
-        <div class="compare-bridge" aria-hidden="true"><span></span><b>↔</b><span></span></div>
-        <article class="panel upload-panel warm-panel">
-          <div class="panel-heading"><div class="step-number warm">2</div><div><span class="panel-kicker">SEGUNDO LADO</span><h2>Relatório 2</h2><p>Arquivo que será conferido.</p></div><span class="multi-badge warm">1 ou vários PDFs</span></div>
-          <label class="report-name-field"><span>Como este relatório deve aparecer no resultado?</span><input id="reportBLabel" type="text" value="Relatório 2" maxlength="40" placeholder="Ex.: Portal SEFAZ" /></label>
-          <label class="dropzone warm" id="reportBDropzone" for="reportBInput"><input id="reportBInput" type="file" accept="application/pdf,.pdf" multiple /><span class="drop-icon warm">⇧</span><strong>Solte aqui o Relatório 2</strong><span>ou clique para selecionar os PDFs</span><em>Qualquer origem ou layout</em></label>
+
+        <div class="compare-bridge entry-bridge" aria-hidden="true"><span></span><b>→</b><span></span></div>
+
+        <article class="panel upload-panel source-panel source-panel-dominio">
+          <div class="source-ribbon source-ribbon-dominio">ESCRITURAÇÃO</div>
+          <div class="panel-heading"><div class="step-number warm">2</div><div><span class="panel-kicker">SISTEMA CONTÁBIL</span><h2>Relatório Domínio</h2><p>Entradas importadas ou escrituradas no Domínio.</p></div><span class="multi-badge warm">1 ou vários PDFs</span></div>
+          <input id="reportBLabel" type="hidden" value="Domínio" />
+          <div class="source-guide source-guide-dominio">
+            <div><span>Envie, de preferência</span><strong>Acompanhamento de Entradas</strong></div>
+            <div><span>O Conferinho procura</span><strong>Nº da NF + Valor Contábil</strong></div>
+          </div>
+          <label class="dropzone warm" id="reportBDropzone" for="reportBInput"><input id="reportBInput" type="file" accept="application/pdf,.pdf" multiple /><span class="drop-icon warm">DOM</span><strong>Solte aqui o relatório do Domínio</strong><span>ou clique para selecionar um ou vários PDFs</span><em>Desdobramentos da mesma NF serão somados</em></label>
           <div class="file-list" id="reportBFileList"></div>
         </article>
       </section>
-      <section class="panel action-panel">
-        <div><span class="panel-kicker">COMPARAÇÃO E PLANO DE AÇÃO</span><h2>O Conferinho soma lançamentos da mesma NF, compara os totais e mostra o que fazer</h2><p id="pdfStatusHint">Estou esperando pelo menos um PDF em cada campo.</p></div>
-        <button class="button button-primary button-large" id="compareBtn" type="button" disabled>✓ Comparar e analisar</button>
+
+      <section class="panel action-panel entry-action-panel">
+        <div><span class="panel-kicker">PRONTO PARA AUDITAR</span><h2>Auditar a escrituração do Domínio pela base da SEFAZ</h2><p id="pdfStatusHint">Envie a base oficial da SEFAZ e o relatório de entradas do Domínio.</p></div>
+        <button class="button button-primary button-large" id="compareBtn" type="button" disabled>✓ Auditar Domínio</button>
       </section>
       <section id="pdfProgress" class="panel progress-panel hidden" aria-live="polite"><div class="progress-avatar">🤖</div><div class="progress-content"><div class="progress-head"><strong id="pdfProgressTitle">Lendo relatórios...</strong><span id="pdfProgressPercent">0%</span></div><div class="progress-track"><div id="pdfProgressBar" class="progress-bar"></div></div><p id="pdfProgressDetail">Preparando arquivos</p></div></section>
       <section id="pdfResults" class="results-section hidden">
-        <div class="results-header"><div><span class="eyebrow"><span class="eyebrow-dot"></span> PAINEL DE DECISÃO</span><h2>Diagnóstico da conferência.</h2><p id="pdfResultSubtitle"></p></div><div class="results-actions"><button class="button button-ghost" id="pdfCopySummaryBtn">Copiar resumo</button><button class="button button-ghost" id="pdfExportBtn">Exportar plano de ação</button><button class="button button-secondary" id="pdfPrintBtn">Imprimir</button></div></div>
+        <div class="results-header"><div><span class="eyebrow"><span class="eyebrow-dot"></span> DIAGNÓSTICO DA ESCRITURAÇÃO</span><h2>O Domínio está reproduzindo a base da SEFAZ?</h2><p id="pdfResultSubtitle"></p></div><div class="results-actions"><button class="button button-ghost" id="pdfCopySummaryBtn">Copiar resumo</button><button class="button button-ghost" id="pdfExportBtn">Exportar plano de ação</button><button class="button button-secondary" id="pdfPrintBtn">Imprimir</button></div></div>
+
+        <div class="entry-result-guide">
+          <div class="result-guide-title"><strong>Como ler o diagnóstico</strong><span>Toda NF da SEFAZ precisa ser encontrada no Domínio com o valor correto.</span></div>
+          <div class="result-guide-items">
+            <span class="guide-ok"><b>✓</b><strong>Escriturada corretamente</strong><small>A NF da SEFAZ bateu no Domínio</small></span>
+            <span class="guide-warning"><b>≠</b><strong>Valor incorreto</strong><small>A NF existe, mas o Domínio não bate</small></span>
+            <span class="guide-danger"><b>!</b><strong>Não escriturada</strong><small>Consta na SEFAZ e falta no Domínio</small></span>
+            <span class="guide-grouped"><b>Σ</b><strong>Correta após soma</strong><small>Os lançamentos do Domínio foram consolidados</small></span>
+          </div>
+        </div>
 
         <div class="decision-layout">
           <article class="panel decision-card" id="pdfDecisionCard">
             <div class="decision-card-head"><span class="decision-icon" id="pdfDecisionIcon">!</span><span class="decision-level" id="pdfDecisionLevel">ANALISANDO</span></div>
-            <h3 id="pdfDecisionTitle">Resultado da conferência</h3>
+            <h3 id="pdfDecisionTitle">Diagnóstico da escrituração</h3>
             <p id="pdfDecisionText"></p>
             <div class="decision-next" id="pdfDecisionNext"></div>
           </article>
           <article class="panel priority-panel">
-            <div class="priority-panel-head"><div><span class="panel-kicker">COMECE POR AQUI</span><h3>Maiores prioridades</h3></div><span id="pdfPendingBadge" class="pending-badge">0 pendências</span></div>
+            <div class="priority-panel-head"><div><span class="panel-kicker">COMECE POR AQUI</span><h3>Pendências que impedem o fechamento</h3></div><span id="pdfPendingBadge" class="pending-badge">0 pendências</span></div>
             <div id="pdfPriorityList" class="priority-list"></div>
           </article>
         </div>
 
         <div class="financial-grid">
-          <article class="financial-card"><span id="pdfTotalALabel">Total Relatório 1</span><strong id="pdfTotalAValue">R$ 0,00</strong><small id="pdfTotalARecords">0 registros</small></article>
-          <article class="financial-card"><span id="pdfTotalBLabel">Total Relatório 2</span><strong id="pdfTotalBValue">R$ 0,00</strong><small id="pdfTotalBRecords">0 registros</small></article>
-          <article class="financial-card net" id="pdfNetCard"><span>Diferença líquida</span><strong id="pdfNetDifference">R$ 0,00</strong><small id="pdfNetDirection">Totais equilibrados</small></article>
-          <article class="financial-card risk"><span>Valor que exige conferência</span><strong id="pdfOpenImpact">R$ 0,00</strong><small>soma do impacto das pendências</small></article>
+          <article class="financial-card"><span id="pdfTotalALabel">Base oficial da SEFAZ</span><strong id="pdfTotalAValue">R$ 0,00</strong><small id="pdfTotalARecords">0 NFs oficiais</small></article>
+          <article class="financial-card"><span id="pdfTotalBLabel">Total escriturado no Domínio</span><strong id="pdfTotalBValue">R$ 0,00</strong><small id="pdfTotalBRecords">0 lançamentos</small></article>
+          <article class="financial-card coverage" id="pdfNetCard"><span>Conciliação da base SEFAZ</span><strong id="pdfNetDifference">0%</strong><small id="pdfNetDirection">0 de 0 NFs corretas</small></article>
+          <article class="financial-card risk"><span>Valor ainda sem explicação</span><strong id="pdfOpenImpact">R$ 0,00</strong><small>impacto bruto das pendências abertas</small></article>
         </div>
 
         <div class="panel reconciliation-panel">
-          <div class="reconciliation-copy"><span class="panel-kicker">CONCILIAÇÃO FINANCEIRA</span><h3 id="pdfReconciliationTitle">Como a diferença é formada</h3><p id="pdfReconciliationText"></p></div>
+          <div class="reconciliation-copy"><span class="panel-kicker">RAIZ DA DIFERENÇA</span><h3 id="pdfReconciliationTitle">Por que o Domínio não está batendo?</h3><p id="pdfReconciliationText"></p></div>
           <div class="reconciliation-equation" id="pdfReconciliationEquation"></div>
         </div>
 
-        <div class="summary-grid six"><button class="summary-card active" data-pdf-filter="all"><span>NFs comparadas</span><strong id="pdfTotalCount">0</strong><small>após consolidação</small></button><button class="summary-card success" data-pdf-filter="ok"><span>Conferidas</span><strong id="pdfOkCount">0</strong><small>sem diferença</small></button><button class="summary-card warning" data-pdf-filter="divergent"><span>Divergentes</span><strong id="pdfDivergentCount">0</strong><small>após a soma</small></button><button class="summary-card danger" data-pdf-filter="missing"><span>Ausentes</span><strong id="pdfMissingCount">0</strong><small>em um dos lados</small></button><button class="summary-card purple" data-pdf-filter="grouped"><span>NFs agrupadas</span><strong id="pdfGroupedCount">0</strong><small>lançamentos somados</small></button><button class="summary-card pending" data-pdf-filter="pending"><span>Pendências</span><strong id="pdfPendingCount">0</strong><small id="pdfResolvedCount">0 resolvidas</small></button></div>
+        <div class="summary-grid seven"><button class="summary-card active" data-pdf-filter="all"><span>NFs na base SEFAZ</span><strong id="pdfTotalCount">0</strong><small>documentos oficiais</small></button><button class="summary-card success" data-pdf-filter="ok"><span>Corretas no Domínio</span><strong id="pdfOkCount">0</strong><small>número e valor conferidos</small></button><button class="summary-card danger" data-pdf-filter="missing-b"><span>Não escrituradas</span><strong id="pdfMissingCount">0</strong><small>constam na SEFAZ e faltam no Domínio</small></button><button class="summary-card warning" data-pdf-filter="divergent"><span>Valor incorreto</span><strong id="pdfDivergentCount">0</strong><small>NF localizada, total diferente</small></button><button class="summary-card extra" data-pdf-filter="missing-a"><span>Extras no Domínio</span><strong id="pdfExtraCount">0</strong><small>sem correspondência na SEFAZ</small></button><button class="summary-card purple" data-pdf-filter="grouped"><span>Somadas no Domínio</span><strong id="pdfGroupedCount">0</strong><small>desdobramentos consolidados</small></button><button class="summary-card pending" data-pdf-filter="pending"><span>Pendências abertas</span><strong id="pdfPendingCount">0</strong><small id="pdfResolvedCount">0 resolvidas</small></button></div>
         <div class="panel validation-panel" id="pdfValidationPanel"></div>
         <div class="panel table-panel">
-          <div class="table-toolbar"><div class="filter-tabs"><button class="filter-tab active" data-pdf-filter="all">Todos</button><button class="filter-tab" data-pdf-filter="pending">Pendências</button><button class="filter-tab" data-pdf-filter="critical">Críticas</button><button class="filter-tab" data-pdf-filter="missing-b">Só no Relatório 1</button><button class="filter-tab" data-pdf-filter="missing-a">Só no Relatório 2</button><button class="filter-tab" data-pdf-filter="divergent">Divergentes</button><button class="filter-tab" data-pdf-filter="grouped">Agrupadas / somadas</button><button class="filter-tab" data-pdf-filter="duplicate">Repetições para revisar</button><button class="filter-tab" data-pdf-filter="resolved">Resolvidas</button><button class="filter-tab" data-pdf-filter="ok">Conferidas</button></div><label class="search-box">⌕<input id="pdfSearchInput" placeholder="Buscar NF, fornecedor ou anotação" /></label></div>
-          <div class="table-wrap"><table class="decision-table"><thead><tr><th>Prioridade</th><th>Situação / NF</th><th>Comparação</th><th class="align-right">Impacto</th><th>Próxima ação</th><th>Andamento</th></tr></thead><tbody id="pdfResultsBody"></tbody></table><div id="pdfEmptyResults" class="empty-results hidden"><div>⌕</div><strong>Nenhum item encontrado</strong><span>Altere o filtro ou o termo de busca.</span></div></div>
+          <div class="table-toolbar"><div class="filter-tabs"><button class="filter-tab active" data-pdf-filter="all">Visão geral</button><button class="filter-tab" data-pdf-filter="pending">Pendências</button><button class="filter-tab" data-pdf-filter="critical">Críticas</button><button class="filter-tab" data-pdf-filter="missing-b">Não escrituradas no Domínio</button><button class="filter-tab" data-pdf-filter="missing-a">Lançamentos extras no Domínio</button><button class="filter-tab" data-pdf-filter="divergent">Valor incorreto no Domínio</button><button class="filter-tab" data-pdf-filter="grouped">Somadas no Domínio</button><button class="filter-tab" data-pdf-filter="duplicate">Repetições para revisar</button><button class="filter-tab" data-pdf-filter="resolved">Resolvidas</button><button class="filter-tab" data-pdf-filter="ok">Corretas no Domínio</button></div><label class="search-box">⌕<input id="pdfSearchInput" placeholder="Buscar NF, fornecedor ou anotação" /></label></div>
+          <div class="table-wrap"><table class="decision-table"><thead><tr><th>Prioridade</th><th>Diagnóstico / NF</th><th>SEFAZ x Domínio</th><th class="align-right">Diferença</th><th>Causa provável e ação</th><th>Tratamento</th></tr></thead><tbody id="pdfResultsBody"></tbody></table><div id="pdfEmptyResults" class="empty-results hidden"><div>⌕</div><strong>Nenhum item encontrado</strong><span>Altere o filtro ou o termo de busca.</span></div></div>
         </div>
       </section>
     </section>

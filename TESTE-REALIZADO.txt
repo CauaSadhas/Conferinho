@@ -1,15 +1,14 @@
-TESTE DA CONSOLIDAÇÃO
+VALIDAÇÕES DA VERSÃO V7
 
-Cenário testado no lado Domínio:
-- NF 896442 — R$ 1.496,53
-- NF 896442 — R$ 224,37
-- NF 896442 — R$ 365,40
-
-Resultado consolidado: R$ 2.086,30
-Quantidade de componentes: 3
-
-Cenário 1 — SEFAZ com R$ 2.086,30
-Resultado esperado e obtido: Conferida após soma.
-
-Cenário 2 — SEFAZ com R$ 2.000,00
-Resultado esperado e obtido: Divergente após soma, diferença de R$ 86,30.
+- JavaScript validado com node --check: sem erros de sintaxe.
+- HTML analisado: nenhum ID duplicado e todos os elementos essenciais presentes.
+- Teste lógico realizado com quatro situações:
+  1. mesma NF e mesmo valor;
+  2. mesma NF com valor diferente;
+  3. NF da SEFAZ ausente no Domínio;
+  4. lançamento do Domínio sem correspondência na SEFAZ.
+- Consolidação testada com três lançamentos no Domínio:
+  R$ 1.496,53 + R$ 224,37 + R$ 365,40 = R$ 2.086,30.
+- Resultado da consolidação: NF classificada como correta após soma.
+- Métricas testadas: percentual conciliado, ausentes, divergentes, extras e impacto financeiro.
+- Os módulos Analisador NFS-e e Somador de NFs foram preservados.

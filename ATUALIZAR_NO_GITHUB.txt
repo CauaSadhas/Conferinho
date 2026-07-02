@@ -1,50 +1,26 @@
-CONFERINHO — ATUALIZAÇÃO V5
-CONSOLIDAÇÃO AUTOMÁTICA DE LANÇAMENTOS DA MESMA NF
+CONFERINHO — ATUALIZAÇÃO V7
+MÓDULO: CONCILIAÇÃO DE ENTRADAS — SEFAZ COMO BASE OFICIAL
 
-O QUE FOI CORRIGIDO
-
-O Sistema Domínio pode dividir uma única nota fiscal em vários lançamentos, por exemplo:
-
-NF 896442
-R$ 1.496,53
-R$   224,37
-R$   365,40
-
-Antes, essas linhas poderiam gerar divergências falsas.
-Agora o Conferinho soma os lançamentos primeiro:
-
-TOTAL CONSOLIDADO: R$ 2.086,30
-
-Somente depois ele procura a mesma NF no outro relatório e compara o total.
-
-REGRAS DA NOVA COMPARAÇÃO
-
-1. O Conferinho identifica todas as linhas da mesma NF.
-2. Quando disponíveis, usa CNPJ, série e fornecedor para não misturar notas diferentes com o mesmo número.
-3. Soma os valores dos lançamentos desdobrados.
-4. Compara o total consolidado com o outro relatório.
-5. Classifica como:
-   - Conferida após soma
-   - Divergente após soma
-   - Ausente no outro relatório
-   - Repetição para revisar
-6. O botão “Ver composição” mostra cada valor que formou o total.
-7. O CSV exportado leva a quantidade de lançamentos e toda a composição da soma.
-
-COMO ATUALIZAR NO GITHUB
+COMO ATUALIZAR
 
 1. Extraia este ZIP.
 2. Abra o repositório verdadeiro do Conferinho no GitHub.
-3. Envie os arquivos abaixo para a raiz do repositório:
+3. Na raiz do repositório, substitua estes três arquivos:
    - index.html
    - styles.css
    - app.js
-4. Confirme a substituição dos arquivos existentes.
-5. Clique em “Commit changes”.
-6. Aguarde a Vercel publicar a atualização.
+4. Clique em “Commit changes”.
+5. Aguarde a Vercel concluir a publicação.
 
 IMPORTANTE
 
 - Não apague a pasta assets.
-- A atualização mantém os módulos de Comparação, Analisador NFS-e e Somador de NFs.
-- O processamento continua sendo feito no navegador.
+- Não crie outra pasta para estes arquivos: eles devem ficar na raiz do repositório.
+- Os módulos Analisador NFS-e e Somador de NFs foram mantidos.
+- Esta atualização não altera seus dados; ela muda a lógica e a apresentação da conciliação.
+
+PRINCÍPIO DO MÓDULO
+
+A SEFAZ é a base oficial. O Domínio é a escrituração auditada.
+Cada NF da SEFAZ deve ser localizada no Domínio com o mesmo valor.
+Quando não bater, o Conferinho apresenta causa provável, verificações e ação recomendada.
