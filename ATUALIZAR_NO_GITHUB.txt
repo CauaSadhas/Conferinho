@@ -1,13 +1,12 @@
-CONFERINHO — SOMADOR DA COLUNA TOTAL NF V9
+ATUALIZAÇÃO DO CONFERINHO V10
 
-1. Extraia este arquivo ZIP.
-2. Abra o repositório do Conferinho no GitHub.
-3. Substitua na raiz do projeto:
+1. Extraia este ZIP.
+2. Na raiz do repositório do Conferinho, substitua:
    - index.html
    - styles.css
    - app.js
-4. Não apague a pasta assets.
-5. Clique em Commit changes.
-6. Aguarde a publicação da Vercel e atualize o site com Ctrl + F5.
+3. Não apague a pasta assets.
+4. Clique em Commit changes.
+5. Aguarde a Vercel publicar e atualize o site com Ctrl + F5.
 
-A atualização mantém os demais módulos do Conferinho.
+Correção principal: leitura de prints com OCR em múltiplas tentativas, somando somente a coluna Total NF.

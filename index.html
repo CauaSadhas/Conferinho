@@ -227,7 +227,7 @@
 
 
     <section id="sumModule" class="module-section hidden">
-      <div class="flow-intro"><span class="flow-kicker">SOMADOR DE NOTAS</span><h2>Cole o print da tabela e some a coluna Total NF.</h2><p>O Conferinho trata a imagem, remove as linhas da grade e lê cada registro pelas colunas Nº NF e Total NF.</p></div>
+      <div class="flow-intro"><span class="flow-kicker">SOMADOR DE NOTAS</span><h2>Cole o print da tabela e some a coluna Total NF.</h2><p>O Conferinho remove a grade, testa leituras diferentes do print e escolhe a que encontra mais linhas válidas de Nº NF e Total NF.</p></div>
       <section class="panel nfse-upload-panel" id="sumUploadPanel">
         <label class="dropzone sum-dropzone" id="sumDropzone" for="sumInput" tabindex="0" aria-label="Cole prints com Control V, arraste arquivos ou clique para selecionar">
           <input id="sumInput" type="file" accept="application/pdf,.pdf,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" multiple />
@@ -235,7 +235,7 @@
           <strong>Cole aqui o print do relatório com Ctrl + V</strong>
           <span>Também pode arrastar ou selecionar vários prints e PDFs de tabelas</span>
           <div class="paste-shortcut" aria-hidden="true"><kbd>Ctrl</kbd><b>+</b><kbd>V</kbd><small>Você pode colar um print depois do outro</small></div>
-          <em>Reconhece tabelas com Nº NF, data, UF e Total NF</em>
+          <em>Lê a tabela mesmo quando o print está pequeno ou a grade atrapalha o OCR</em>
         </label>
         <div class="nfse-upload-footer sum-upload-footer">
           <div id="sumQueueText"><strong>Nenhum arquivo selecionado</strong><span>Copie um print, volte para esta tela e pressione Ctrl + V.</span></div>
@@ -247,7 +247,7 @@
       <section id="sumResults" class="results-section hidden">
         <div class="results-header"><div><span class="eyebrow"><span class="eyebrow-dot"></span> SOMA CONCLUÍDA</span><h2>Relatório das notas identificadas.</h2><p id="sumResultSubtitle">Confira os itens antes de exportar.</p></div><div class="results-actions"><button class="button button-ghost" id="sumAddBtn" type="button">+ Adicionar NF</button><button class="button button-ghost" id="sumExportBtn" type="button">Exportar CSV</button><button class="button button-secondary" id="sumPrintBtn" type="button">Imprimir / salvar PDF</button></div></div>
         <div class="summary-grid four"><button class="summary-card active" data-sum-filter="all"><span>Arquivos e páginas</span><strong id="sumPagesCount">0</strong><small id="sumFilesCountText">0 arquivos</small></button><button class="summary-card success" data-sum-filter="included"><span>NFs incluídas</span><strong id="sumNotesCount">0</strong><small>usadas na soma</small></button><button class="summary-card warning" data-sum-filter="review"><span>Precisam revisar</span><strong id="sumReviewCount">0</strong><small>OCR ou duplicidade</small></button><button class="summary-card sum-total-card" data-sum-filter="included"><span>Total da coluna Total NF</span><strong id="sumGrandTotal">R$ 0,00</strong><small>outras colunas são ignoradas</small></button></div>
-        <div class="panel validation-panel sum-help"><strong>Coluna usada na soma: Total NF.</strong> O Conferinho procura o cabeçalho da tabela, identifica Nº NF, data e UF e usa o primeiro valor monetário da coluna Total NF. Valores de colunas posteriores, como Base Cálc. ICMS, ICMS, isentas e outras, não entram no total. Itens incertos continuam editáveis antes da exportação.</div>
+        <div class="panel validation-panel sum-help"><strong>Coluna usada na soma: Total NF.</strong> Em prints, o Conferinho remove a grade, faz leituras alternativas e escolhe a que encontrou mais pares válidos de Nº NF e Total NF. Valores de colunas posteriores, como Base Cálc. ICMS, ICMS, isentas e outras, não entram no total. Quando a quantidade encontrada for menor que a indicada no print, o sistema avisa para revisão.</div>
         <div id="sumWarnings" class="panel warning-box hidden"><strong>Atenção na conferência</strong><ul id="sumWarningsList"></ul></div>
         <div class="panel table-panel"><div class="table-toolbar"><div class="filter-tabs"><button class="filter-tab active" data-sum-filter="all">Todas</button><button class="filter-tab" data-sum-filter="included">Incluídas na soma</button><button class="filter-tab" data-sum-filter="review">Precisam revisar</button><button class="filter-tab" data-sum-filter="excluded">Desmarcadas</button></div><label class="search-box">⌕<input id="sumSearchInput" placeholder="Buscar NF ou arquivo" /></label></div><div class="table-wrap"><table class="sum-table"><thead><tr><th>Incluir</th><th>Situação</th><th>Número da NF</th><th class="align-right">Total NF</th><th>Arquivo / página</th><th>Trecho reconhecido</th><th></th></tr></thead><tbody id="sumResultsBody"></tbody></table><div id="sumEmptyResults" class="empty-results hidden"><div>⌕</div><strong>Nenhuma NF encontrada</strong><span>Tente outra imagem ou adicione uma linha manualmente.</span></div></div></div>
       </section>

@@ -1,0 +1,11 @@
+CONFERINHO V10 — CORREÇÃO DA LEITURA DE PRINTS
+
+- O PDF continua usando o texto original e somando apenas Total NF.
+- Prints agora passam por até três leituras automáticas.
+- A grade é removida sem engrossar os números na primeira tentativa.
+- Se faltarem linhas, o sistema reforça os caracteres e tenta novamente.
+- O melhor resultado é escolhido pela quantidade de pares Nº NF + Total NF encontrados.
+- A leitura não depende mais de a UF MS ser reconhecida perfeitamente.
+- Datas parcialmente reconhecidas pelo OCR continuam servindo como referência.
+- O primeiro valor monetário após a data/NF é usado como Total NF; colunas seguintes são ignoradas.
+- Se o print informar uma quantidade de linhas maior que a reconhecida, aparece um aviso.

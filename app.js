@@ -1483,7 +1483,9 @@ async function recognizeSumCanvas(canvas, progressHandler, pageSegmentation = '6
       preserve_interword_spaces: '1',
       user_defined_dpi: '300'
     });
-    return await worker.recognize(canvas);
+    // Texto é suficiente para a soma, mas o TSV ajuda a manter a estrutura das linhas
+    // quando o print vem pequeno ou com a grade muito marcada.
+    return await worker.recognize(canvas, {}, { text: true, tsv: true });
   } finally {
     sumOcrProgressHandler = null;
   }
@@ -1606,21 +1608,29 @@ function preprocessSumCanvas(source, sourceWidth, sourceHeight) {
   const isolated = isolateSumTableLines(binary, width, height);
   const cleaned = closeSumBinary(isolated.binary, width, height);
 
-  const processedCanvas = document.createElement('canvas');
-  processedCanvas.width = width;
-  processedCanvas.height = height;
-  const processedContext = processedCanvas.getContext('2d');
-  const output = processedContext.createImageData(width, height);
-  for (let position = 0; position < cleaned.length; position++) {
-    const value = cleaned[position] ? 0 : 255;
-    const outputIndex = position * 4;
-    output.data[outputIndex] = value;
-    output.data[outputIndex + 1] = value;
-    output.data[outputIndex + 2] = value;
-    output.data[outputIndex + 3] = 255;
-  }
-  processedContext.putImageData(output, 0, 0);
-  return { originalCanvas, processedCanvas, tableLike: isolated.tableLike };
+  const binaryToCanvas = (mask) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    const output = context.createImageData(width, height);
+    for (let position = 0; position < mask.length; position++) {
+      const value = mask[position] ? 0 : 255;
+      const outputIndex = position * 4;
+      output.data[outputIndex] = value;
+      output.data[outputIndex + 1] = value;
+      output.data[outputIndex + 2] = value;
+      output.data[outputIndex + 3] = 255;
+    }
+    context.putImageData(output, 0, 0);
+    return canvas;
+  };
+
+  // A primeira versão preserva melhor números pequenos e vírgulas.
+  // A segunda reforça caracteres fracos e funciona melhor em prints borrados.
+  const lineRemovedCanvas = binaryToCanvas(isolated.binary);
+  const processedCanvas = binaryToCanvas(cleaned);
+  return { originalCanvas, lineRemovedCanvas, processedCanvas, tableLike: isolated.tableLike };
 }
 
 async function loadSumImage(file) {
@@ -1674,6 +1684,24 @@ async function extractSumPdfPages(file, fileIndex) {
   return pages;
 }
 
+function expectedSumRowsFromText(text) {
+  const source = normalize(text).replace(/\s+/g, ' ');
+  const visualizing = source.match(/visualizando\s+(\d+)\s*[-–]\s*(\d+)\s+de\s+(\d+)/i);
+  if (visualizing) return Math.max(0, Number(visualizing[2]) - Number(visualizing[1]) + 1);
+  const total = source.match(/(?:total|de)\s+(\d{1,4})\s*(?:de\s+\d{1,4})?/);
+  return total ? Number(total[1]) : 0;
+}
+
+function sumOcrCandidateStats(text) {
+  const parsed = parseSumPageText(text, '__teste__', 1, '__ocr__');
+  const expected = expectedSumRowsFromText(text);
+  return {
+    rows: parsed.length,
+    expected,
+    score: parsed.length * 10000 + sumRecognizedTextScore(text)
+  };
+}
+
 async function extractSumImage(file, fileIndex) {
   const image = await loadSumImage(file);
   const width = image.naturalWidth || image.width;
@@ -1688,19 +1716,44 @@ async function extractSumImage(file, fileIndex) {
     }
   };
 
-  const first = await recognizeSumCanvas(prepared.processedCanvas, progress, prepared.tableLike ? '6' : '3');
-  let text = first.data.text || '';
-  let method = prepared.tableLike ? 'OCR de tabela (grade removida)' : 'OCR da imagem tratada';
+  const candidates = [];
+  const addCandidate = (result, method) => {
+    const text = result?.data?.text || '';
+    candidates.push({ text, tsv: result?.data?.tsv || '', method, stats: sumOcrCandidateStats(text) });
+  };
 
-  if (sumMoneyCandidates(text).length === 0 || normalize(text).length < 25) {
-    updateSumProgress(fileIndex / Math.max(sumState.files.length, 1), `${file.name} — fazendo uma segunda leitura`);
-    const fallback = await recognizeSumCanvas(prepared.originalCanvas, progress, '3');
-    if (sumRecognizedTextScore(fallback.data.text) > sumRecognizedTextScore(text)) {
-      text = fallback.data.text || text;
-      method = 'OCR alternativo da imagem';
-    }
+  // Tentativa principal: remove a grade sem engrossar os números.
+  const first = await recognizeSumCanvas(prepared.lineRemovedCanvas, progress, prepared.tableLike ? '6' : '3');
+  addCandidate(first, prepared.tableLike ? 'OCR de tabela — grade removida' : 'OCR da imagem tratada');
+
+  let best = candidates[0];
+  const firstExpected = best.stats.expected;
+  const firstInsufficient = best.stats.rows === 0
+    || (firstExpected > 0 && best.stats.rows < Math.max(1, Math.floor(firstExpected * 0.75)));
+
+  if (firstInsufficient) {
+    updateSumProgress(fileIndex / Math.max(sumState.files.length, 1), `${file.name} — reforçando números pequenos e vírgulas`);
+    const reinforced = await recognizeSumCanvas(prepared.processedCanvas, progress, prepared.tableLike ? '6' : '3');
+    addCandidate(reinforced, 'OCR de tabela — caracteres reforçados');
+    best = candidates.sort((a, b) => b.stats.score - a.stats.score)[0];
   }
-  return [{ page: 1, text, method }];
+
+  const expected = Math.max(...candidates.map((candidate) => candidate.stats.expected || 0));
+  const stillInsufficient = best.stats.rows === 0
+    || (expected > 0 && best.stats.rows < Math.max(1, Math.floor(expected * 0.75)));
+
+  if (stillInsufficient) {
+    updateSumProgress(fileIndex / Math.max(sumState.files.length, 1), `${file.name} — fazendo leitura alternativa do print`);
+    const fallback = await recognizeSumCanvas(prepared.originalCanvas, progress, '6');
+    addCandidate(fallback, 'OCR alternativo do print original');
+    best = candidates.sort((a, b) => b.stats.score - a.stats.score)[0];
+  }
+
+  if (expected > 0 && best.stats.rows < expected) {
+    sumState.warnings.push(`${file.name}: o print indica ${expected} linha(s), mas o OCR conseguiu montar ${best.stats.rows}. Revise a lista antes de usar o total.`);
+  }
+
+  return [{ page: 1, text: best.text, tsv: best.tsv, method: best.method }];
 }
 
 function cleanSumInvoiceNumber(raw) {
@@ -1766,51 +1819,57 @@ function isSumReportTable(text) {
 }
 
 function parseSumReportTableRow(line, tableMode) {
-  const source = String(line || '');
-  const dateMatches = [...source.matchAll(/\b\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}\b/g)];
+  const source = String(line || '').replace(/[|¦]/g, ' ');
+  const compact = source.replace(/\s+/g, ' ').trim();
+  if (!compact) return null;
+
+  // Datas em prints podem sair como 03/06/2026, 03/6/2026 ou até 03/0/2026.
+  // O ano é usado como âncora quando o OCR perde um dos dígitos da data.
+  const dateMatches = [...compact.matchAll(/\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}/g)];
   const dateMatch = dateMatches[dateMatches.length - 1];
-  const yearMatches = [...source.matchAll(/\b20\d{2}\b/g)];
+  const yearMatches = [...compact.matchAll(/20\d{2}/g)];
   const yearMatch = yearMatches[yearMatches.length - 1];
-  if (!dateMatch && !yearMatch) return null;
 
-  const dateStart = dateMatch?.index ?? Math.max(0, yearMatch.index - 9);
-  const dateEnd = dateMatch ? dateMatch.index + dateMatch[0].length : yearMatch.index + yearMatch[0].length;
-  const beforeDate = source.slice(0, dateStart);
-  const compactBeforeDate = beforeDate.replace(/[|,;]+/g, ' ').replace(/\s+/g, ' ').trim();
-
-  const documentMatches = [...compactBeforeDate.matchAll(/\b\d{11,14}\b/g)];
+  const documentMatches = [...compact.matchAll(/\d{11,15}/g)];
   const lastDocument = documentMatches[documentMatches.length - 1];
+  if (!tableMode && !lastDocument) return null;
+
+  const anchorEnd = dateMatch
+    ? dateMatch.index + dateMatch[0].length
+    : yearMatch
+      ? yearMatch.index + yearMatch[0].length
+      : compact.length;
+  const beforeAnchor = compact.slice(0, dateMatch?.index ?? yearMatch?.index ?? compact.length);
+
   const invoiceArea = lastDocument && lastDocument.index != null
-    ? compactBeforeDate.slice(lastDocument.index + lastDocument[0].length)
-    : compactBeforeDate;
-  const invoiceTokens = [...invoiceArea.matchAll(/\b\d{2,15}\b/g)]
+    ? beforeAnchor.slice(lastDocument.index + lastDocument[0].length)
+    : beforeAnchor;
+  const invoiceTokens = [...invoiceArea.matchAll(/\d{2,15}/g)]
     .map((match) => cleanSumInvoiceNumber(match[0]))
     .filter(Boolean);
   const nf = lastDocument ? invoiceTokens[0] : invoiceTokens[invoiceTokens.length - 1];
   if (!nf) return null;
 
-  // Em relatórios SEFAZ a ordem costuma ser: data, UF, Total NF, Base Cálc. ICMS...
-  // Por isso o Total NF é o PRIMEIRO valor monetário depois da data/UF — nunca o último da linha.
-  const suffixAfterDate = source.slice(dateEnd);
-  const stateMatch = suffixAfterDate.match(/\b(?:AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b/i);
-  const valueZoneStart = dateEnd + (stateMatch ? stateMatch.index + stateMatch[0].length : 0);
-  const valueZone = source.slice(valueZoneStart);
-  const valueCandidates = sumMoneyCandidates(valueZone);
+  // Total NF é o primeiro valor monetário após a data/UF. Se a data foi lida mal,
+  // usamos o primeiro valor após o número da NF. Isso evita pegar Base Cálc. ICMS.
+  let valueZone = compact.slice(anchorEnd);
+  let valueCandidates = sumMoneyCandidates(valueZone);
+  if (!valueCandidates.length) {
+    const nfPosition = compact.indexOf(nf, Math.max(0, lastDocument?.index || 0));
+    valueZone = compact.slice(nfPosition >= 0 ? nfPosition + nf.length : 0);
+    valueCandidates = sumMoneyCandidates(valueZone);
+  }
   if (!valueCandidates.length) return null;
+
   const selectedValue = valueCandidates[0];
-
-  const stateAfterDate = Boolean(stateMatch);
-  const rowLooksTabular = documentMatches.length > 0 && stateAfterDate;
-  if (!tableMode && !rowLooksTabular) return null;
-
   const ignoredColumns = valueCandidates.length > 1;
   return {
     nf,
     value: selectedValue.value,
     note: ignoredColumns
-      ? 'Total NF lido como o primeiro valor após a UF; as colunas seguintes, como Base Cálc. ICMS, foram ignoradas'
+      ? 'Total NF lido como o primeiro valor da linha; colunas posteriores foram ignoradas'
       : 'Valor lido diretamente da coluna Total NF',
-    raw: source.slice(0, 260)
+    raw: compact.slice(0, 260)
   };
 }
 
