@@ -1,0 +1,19 @@
+TESTES DA V12
+
+Cenário de regressão reproduzido:
+- 31 registros da base SEFAZ
+- 26 correspondências exatas com confiança técnica baixa
+- 5 NFs ausentes no Domínio
+- 1 lançamento extra no Domínio
+- 0 divergências de valor
+
+Antes:
+- Para resolver: 32
+- Conferidas: 0
+- Base correta: 0,0%
+
+Depois:
+- Para resolver: 6
+- Conferidas: 26
+- Base correta: 83,9%
+- Avisos de baixa confiança continuam disponíveis, mas não bloqueiam o fechamento como divergência fiscal.

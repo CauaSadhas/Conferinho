@@ -253,7 +253,7 @@ const PDF_MONEY_SOURCE = String.raw`-?(?:R\$\s*)?(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,
 function detectPdfReportType(text) {
   const content = normalize(text);
   if (content.includes('acompanhamento de entradas') && content.includes('valor contabil')) return 'entries';
-  if (content.includes('governo do estado de mato grosso do sul') && content.includes('total nf')) return 'sefaz-ms';
+  if ((content.includes('estado de mato grosso do sul') || content.includes('governo do estado de mato grosso do sul')) && content.includes('total nf')) return 'sefaz-ms';
   if (content.includes('pagamento nf-e') || content.includes('pagamento nfs-e')) return 'cashbook';
   return 'generic';
 }
@@ -798,7 +798,12 @@ function enrichPdfDecisions(records, rowsA, rowsB, rawRowsA = rowsA, rawRowsB = 
     const lowConfidence = confidence < 65;
     const exactComponentDuplicate = !!(row.a?.hasIdenticalComponents || row.b?.hasIdenticalComponents);
     const grouped = !!(row.grouped || row.a?.consolidated || row.b?.consolidated);
-    const needsAction = row.status !== 'ok' || row.duplicate || exactComponentDuplicate || lowConfidence;
+    // Confiança de extração é um aviso técnico, não uma divergência fiscal.
+    // Quando número da NF e valor batem entre SEFAZ e Domínio, a nota conta como
+    // conferida. Somente diferenças reais, conflitos/duplicidades ou repetições
+    // idênticas entram em "Para resolver".
+    const needsReview = lowConfidence && row.status === 'ok' && !row.duplicate && !exactComponentDuplicate;
+    const needsAction = row.status !== 'ok' || row.duplicate || exactComponentDuplicate;
     let priority = 'ok';
     if (row.status === 'missing-b') priority = impact >= criticalThreshold ? 'critical' : 'high';
     else if (row.status === 'divergent') priority = impact >= criticalThreshold ? 'critical' : 'high';
@@ -814,6 +819,7 @@ function enrichPdfDecisions(records, rowsA, rowsB, rawRowsA = rowsA, rawRowsB = 
       signedDifference,
       confidence,
       lowConfidence,
+      needsReview,
       needsAction,
       priority,
       resolved: false,
@@ -826,7 +832,7 @@ function enrichPdfDecisions(records, rowsA, rowsB, rawRowsA = rowsA, rawRowsB = 
   });
 
   const baseRows = enriched.filter((row) => !!row.a);
-  const correctBaseRows = baseRows.filter((row) => row.status === 'ok' && !row.needsAction);
+  const correctBaseRows = baseRows.filter((row) => row.status === 'ok' && !row.duplicate && !row.exactComponentDuplicate);
   const locatedBaseRows = baseRows.filter((row) => !!row.b);
   const missingInDomainRows = enriched.filter((row) => row.status === 'missing-b');
   const divergentRows = enriched.filter((row) => row.status === 'divergent');
@@ -911,7 +917,7 @@ function renderPdfResults(rowsA, rowsB, rawRowsA = rowsA, rawRowsB = rowsB) {
 function refreshPdfDecisionDashboard() {
   const rows = pdfState.records;
   const metrics = pdfState.metrics || { totalA: 0, totalB: 0, rowsA: 0, rowsB: 0, netDifference: 0, missingOnlyA: 0, missingOnlyB: 0, divergentSigned: 0, baseNfs: 0, correctBaseCount: 0, correctRate: 0, missingInDomainCount: 0, divergentCount: 0, extraDomainCount: 0 };
-  const correctBase = rows.filter((row) => row.a && row.status === 'ok' && !row.needsAction).length;
+  const correctBase = rows.filter((row) => row.a && row.status === 'ok' && !row.duplicate && !row.exactComponentDuplicate).length;
   const divergent = rows.filter((row) => row.status === 'divergent').length;
   const missingInDomain = rows.filter((row) => row.status === 'missing-b').length;
   const groupedDomain = rows.filter((row) => row.b?.consolidated).length;
@@ -920,7 +926,7 @@ function refreshPdfDecisionDashboard() {
   const pendingRows = actionRows.filter((row) => !row.resolved);
   const criticalRows = pendingRows.filter((row) => row.priority === 'critical');
   const openImpact = pendingRows.reduce((sum, row) => sum + row.impact, 0);
-  const reviewRows = pendingRows.filter((row) => row.lowConfidence).length;
+  const reviewRows = rows.filter((row) => row.needsReview).length;
   const extraDomain = rows.filter((row) => row.status === 'missing-a').length;
 
   $('#pdfTotalCount').textContent = metrics.baseNfs ?? 0;
@@ -972,14 +978,14 @@ function refreshPdfDecisionDashboard() {
     $('#pdfDecisionIcon').textContent = '!';
     $('#pdfDecisionLevel').textContent = 'NÃO FECHAR AINDA';
     $('#pdfDecisionTitle').textContent = `${coverageText}.`;
-    $('#pdfDecisionText').textContent = `Faltam ${missingInDomain} NF(s) da SEFAZ no Domínio, ${divergent} possuem valor incorreto e ${extraDomain} lançamento(s) existem somente no Domínio. Há ${money.format(openImpact)} ainda sem explicação.`;
-    $('#pdfDecisionNext').innerHTML = `<strong>Ordem de investigação</strong><span>1. NFs da SEFAZ não escrituradas · 2. Valores incorretos no Domínio · 3. Duplicidades e leitura · 4. Lançamentos extras no Domínio${reviewRows ? ' · 5. Confirmar leituras incertas' : ''}</span>`;
+    $('#pdfDecisionText').textContent = `Faltam ${missingInDomain} NF(s) da SEFAZ no Domínio, ${divergent} possuem valor incorreto e ${extraDomain} lançamento(s) existem somente no Domínio. Há ${money.format(openImpact)} ainda sem explicação.${reviewRows ? ` ${reviewRows} leitura(s) de baixa confiança bateram por NF e valor e ficaram apenas como aviso técnico.` : ''}`;
+    $('#pdfDecisionNext').innerHTML = `<strong>Ordem de investigação</strong><span>1. NFs da SEFAZ não localizadas · 2. Valores incorretos no Domínio · 3. Duplicidades reais · 4. Lançamentos extras no Domínio${reviewRows ? ' · Aviso separado: confirmar leituras incertas quando necessário' : ''}</span>`;
   } else {
     decisionCard.classList.add('decision-warning');
     $('#pdfDecisionIcon').textContent = '→';
     $('#pdfDecisionLevel').textContent = 'REVISAR ANTES DO FECHAMENTO';
     $('#pdfDecisionTitle').textContent = `${coverageText}.`;
-    $('#pdfDecisionText').textContent = `A escrituração ainda possui ${pendingRows.length} pendência(s): ${missingInDomain} não escriturada(s), ${divergent} com valor incorreto e ${extraDomain} extra(s) no Domínio.`;
+    $('#pdfDecisionText').textContent = `A escrituração ainda possui ${pendingRows.length} pendência(s) reais: ${missingInDomain} não localizada(s) no relatório do Domínio, ${divergent} com valor incorreto e ${extraDomain} extra(s) no Domínio.${reviewRows ? ` Além disso, ${reviewRows} leitura(s) correta(s) ficaram sinalizadas somente para conferência visual opcional.` : ''}`;
     $('#pdfDecisionNext').innerHTML = '<strong>Próximo passo</strong><span>Abra cada ocorrência, valide a causa provável, corrija o Domínio ou documente a justificativa e marque como resolvida.</span>';
   }
 
@@ -1364,7 +1370,7 @@ function buildPdfFinalReportHtml(meta) {
   const actionRows = rows.filter((row) => row.needsAction);
   const resolved = actionRows.filter((row) => row.resolved);
   const pending = actionRows.filter((row) => !row.resolved);
-  const correct = rows.filter((row) => row.a && row.status === 'ok' && !row.needsAction);
+  const correct = rows.filter((row) => row.a && row.status === 'ok' && !row.duplicate && !row.exactComponentDuplicate);
   const groupedCorrect = correct.filter((row) => row.grouped);
   const status = reportStatusInfo(pending, resolved, actionRows);
   const resolvedImpact = resolved.reduce((sum, row) => sum + (row.impact || 0), 0);

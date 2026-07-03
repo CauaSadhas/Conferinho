@@ -1,0 +1,32 @@
+VALIDAÇÃO DO CONFERINHO - RELATÓRIOS ELTON - JUNHO/2026
+
+Arquivos testados:
+- Estado de Mato Grosso do Sul.pdf (SEFAZ)
+- elton02-entradas.pdf (Domínio)
+
+Resultado esperado:
+- SEFAZ: 31 NFs / R$ 59.044,67
+- Domínio: 31 lançamentos consolidados em 27 NFs / R$ 52.915,08
+- Conferidas: 26 NFs
+- Base correta: 83,9%
+- Ausentes no Domínio: 5 NFs
+  149193 - R$ 167,00
+  149194 - R$ 3.023,00
+  104312 - R$ 574,50
+  49895 - R$ 1.533,09
+  171 - R$ 2.407,00
+- Lançamento extra no Domínio: 1 NF
+  44987 - R$ 1.575,00
+- Valores divergentes: 0
+- Valor a investigar: R$ 9.279,59
+- Diferença líquida Domínio - SEFAZ: -R$ 6.129,59
+
+NFs consolidadas corretamente no Domínio:
+- 148480: R$ 37,50 + R$ 329,40 = R$ 366,90
+- 956905: R$ 548,67 + R$ 2.095,46 = R$ 2.644,13
+- 111639: R$ 2.871,44 + R$ 262,55 = R$ 3.133,99
+- 305344: R$ 952,96 + R$ 2.089,35 = R$ 3.042,31
+
+Correção adicional desta versão:
+- Reconhecimento do relatório SEFAZ quando o cabeçalho traz "Estado de Mato Grosso do Sul" sem a palavra "Governo".
+- Isso evita que as linhas corretas sejam tratadas como leitura genérica de baixa confiança.

@@ -1,14 +1,8 @@
-CONFERINHO — ATUALIZAÇÃO V11
-
-1. Extraia este arquivo ZIP.
-2. Abra a pasta conferinho-relatorio-final-v11.
-3. No repositório do GitHub, substitua os arquivos:
+1. Extraia o ZIP.
+2. Na raiz do repositório do Conferinho, substitua:
    - index.html
    - styles.css
    - app.js
-4. Não apague a pasta assets do projeto verdadeiro.
-5. Clique em Commit changes.
-6. Aguarde a publicação da Vercel.
-7. Abra o site e pressione Ctrl + F5 para limpar o cache.
-
-A atualização mantém os três módulos existentes e acrescenta o Relatório Final na Conciliação de Entradas.
+3. Não apague a pasta assets.
+4. Faça o Commit changes.
+5. Aguarde a publicação da Vercel e atualize o navegador com Ctrl + F5.

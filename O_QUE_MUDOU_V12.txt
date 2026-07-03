@@ -1,0 +1,17 @@
+CONFERINHO V12 — CORREÇÃO DO RESUMO DA CONCILIAÇÃO
+
+Problema corrigido:
+- NFs que batiam por número e valor estavam entrando em "Para resolver" quando a extração do PDF tinha confiança abaixo de 65%.
+- Isso podia gerar situações incoerentes, como 32 pendências, 0 conferidas e apenas 5 ausentes + 1 extra no diagnóstico.
+
+Nova regra:
+- Divergência fiscal real: NF ausente, valor diferente, lançamento extra ou conflito/duplicidade real.
+- Aviso técnico: leitura com baixa confiança, mas cujo número e valor bateram nos dois relatórios.
+- Avisos técnicos não reduzem mais a porcentagem da base correta e não entram em "Para resolver".
+
+Exemplo do caso reportado:
+- 31 NFs na SEFAZ
+- 5 não localizadas no Domínio
+- 0 com valor divergente
+- 1 lançamento extra no Domínio
+- Resultado coerente esperado: 26 de 31 NFs corretas (83,9%) e 6 ocorrências para resolver.
