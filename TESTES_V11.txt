@@ -1,0 +1,11 @@
+TESTES REALIZADOS — V11
+
+- Validação de sintaxe do app.js com Node.js: aprovado.
+- Abertura da janela de configuração do relatório: aprovada.
+- Preenchimento de empresa, período, responsável, data e observação: aprovado.
+- Relatório com NFs conferidas: aprovado.
+- Relatório com NF conferida após soma: aprovado.
+- Relatório com pendência resolvida e comentário: aprovado.
+- Relatório com pendências ainda abertas e orientação: aprovado.
+- Totais SEFAZ, Domínio, diferença, valores tratados e abertos: aprovado.
+- Layout para impressão e salvamento em PDF: aprovado.

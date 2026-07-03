@@ -1,12 +1,14 @@
-ATUALIZAÇÃO DO CONFERINHO V10
+CONFERINHO — ATUALIZAÇÃO V11
 
-1. Extraia este ZIP.
-2. Na raiz do repositório do Conferinho, substitua:
+1. Extraia este arquivo ZIP.
+2. Abra a pasta conferinho-relatorio-final-v11.
+3. No repositório do GitHub, substitua os arquivos:
    - index.html
    - styles.css
    - app.js
-3. Não apague a pasta assets.
-4. Clique em Commit changes.
-5. Aguarde a Vercel publicar e atualize o site com Ctrl + F5.
+4. Não apague a pasta assets do projeto verdadeiro.
+5. Clique em Commit changes.
+6. Aguarde a publicação da Vercel.
+7. Abra o site e pressione Ctrl + F5 para limpar o cache.
 
-Correção principal: leitura de prints com OCR em múltiplas tentativas, somando somente a coluna Total NF.
+A atualização mantém os três módulos existentes e acrescenta o Relatório Final na Conciliação de Entradas.

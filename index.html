@@ -99,8 +99,8 @@
           </div>
           <div class="results-actions">
             <button class="button button-ghost" id="pdfCopySummaryBtn">Copiar resumo</button>
-            <button class="button button-ghost" id="pdfExportBtn">Exportar relatório</button>
-            <button class="button button-secondary" id="pdfPrintBtn">Imprimir</button>
+            <button class="button button-ghost" id="pdfExportBtn">Exportar CSV</button>
+            <button class="button button-secondary" id="pdfFinalReportBtn">Gerar relatório final</button>
           </div>
         </div>
 
@@ -253,6 +253,38 @@
       </section>
     </section>
   </main>
+
+
+  <dialog id="pdfReportDialog" class="report-dialog" aria-labelledby="pdfReportDialogTitle">
+    <form class="report-dialog-card" method="dialog">
+      <header class="report-dialog-head">
+        <div>
+          <span class="panel-kicker">RELATÓRIO DE ENCERRAMENTO</span>
+          <h2 id="pdfReportDialogTitle">Gerar relatório da conciliação</h2>
+          <p>O documento reúne o resultado da comparação, as pendências tratadas, os comentários registrados e o que ainda precisa ser resolvido.</p>
+        </div>
+        <button class="report-dialog-close" id="pdfReportDialogClose" type="button" aria-label="Fechar">×</button>
+      </header>
+
+      <div class="report-dialog-grid">
+        <label><span>Empresa / cliente</span><input id="pdfReportCompany" placeholder="Ex.: Empresa Exemplo Ltda" /></label>
+        <label><span>Competência ou período</span><input id="pdfReportPeriod" placeholder="Ex.: 01/06/2026 a 30/06/2026" /></label>
+        <label><span>Responsável pela conferência</span><input id="pdfReportResponsible" placeholder="Nome de quem realizou a conferência" /></label>
+        <label><span>Data do relatório</span><input id="pdfReportDate" type="date" /></label>
+      </div>
+
+      <label class="report-dialog-note"><span>Observação geral / conclusão</span><textarea id="pdfReportGeneralNote" rows="3" placeholder="Ex.: Todas as notas ausentes foram reimportadas e os valores divergentes foram corrigidos."></textarea></label>
+
+      <label class="report-dialog-option"><input id="pdfReportIncludeCorrect" type="checkbox" checked /><span><strong>Incluir a lista completa das NFs conferidas</strong><small>Útil como evidência do trabalho realizado. Pode deixar o PDF mais longo.</small></span></label>
+
+      <div class="report-readiness" id="pdfReportReadiness"></div>
+
+      <footer class="report-dialog-actions">
+        <button class="button button-ghost" id="pdfReportCancelBtn" type="button">Cancelar</button>
+        <button class="button button-primary" id="pdfGenerateReportBtn" type="button">Abrir relatório final</button>
+      </footer>
+    </form>
+  </dialog>
 
   <footer class="site-footer"><div class="footer-inner"><div class="footer-brand"><span class="brand-icon small"><svg viewBox="0 0 64 64"><path d="M13 5h38a8 8 0 0 1 8 8v29a8 8 0 0 1-8 8H30L18 59v-9h-5a8 8 0 0 1-8-8V13a8 8 0 0 1 8-8Z" fill="currentColor"/><path d="m18 28 9 9 20-21" fill="none" stroke="#fff" stroke-width="6"/></svg></span><div><strong>Conferinho</strong><span>Compara. Confere. Dá certo.</span></div></div><p>Os PDFs, imagens e XMLs são processados localmente no navegador.</p></div></footer>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

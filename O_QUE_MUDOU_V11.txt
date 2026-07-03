@@ -1,0 +1,32 @@
+CONFERINHO V11 — RELATÓRIO FINAL DA CONCILIAÇÃO
+
+NOVO BOTÃO
+- Gerar relatório final, dentro do resultado da Conciliação de Entradas.
+
+ANTES DE GERAR
+- Empresa / cliente.
+- Competência ou período.
+- Responsável pela conferência.
+- Data do relatório.
+- Observação geral / conclusão.
+- Opção de incluir a lista completa das NFs conferidas.
+
+O RELATÓRIO MOSTRA
+- Total da base oficial SEFAZ.
+- Total original do relatório Domínio.
+- Diferença original Domínio x SEFAZ.
+- Percentual da base correta.
+- Quantidade de NFs conferidas sem correção.
+- Quantidade de NFs conferidas após soma dos desdobramentos.
+- Pendências identificadas, tratadas e ainda abertas.
+- Valor das pendências tratadas e abertas.
+- Cada pendência resolvida com o comentário “o que foi feito”.
+- Cada pendência aberta com a próxima ação recomendada.
+- Lista das NFs que deram certo.
+- Arquivos usados na análise.
+- Conclusão e campos de assinatura.
+
+IMPORTANTE
+- Marcar uma ocorrência como resolvida registra o tratamento realizado.
+- O relatório deixa claro quando ainda é necessário emitir um novo relatório do Domínio e executar novamente a conciliação para validar as correções.
+- O documento abre em uma tela própria e pode ser impresso ou salvo como PDF.

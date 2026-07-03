@@ -3,7 +3,7 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const pdfState = { filesA: [], filesB: [], records: [], filter: "all", search: "", labels: { A: "SEFAZ", B: "Domínio" }, metrics: null };
+const pdfState = { filesA: [], filesB: [], records: [], filter: "all", search: "", labels: { A: "SEFAZ", B: "Domínio" }, metrics: null, reportMeta: { company: "", document: "", period: "", responsible: "", generalNote: "", reportDate: "", includeCorrect: true, runAt: null } };
 const nfseState = { files: [], notes: [], warnings: [], processed: 0, failed: 0, filter: "retained", search: "" };
 const sumState = { files: [], records: [], warnings: [], pages: 0, filter: "all", search: "" };
 
@@ -61,6 +61,8 @@ function downloadCsv(filename, rows) {
   document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
 }
 function yieldBrowser() { return new Promise((resolve) => setTimeout(resolve, 0)); }
+function safeStorageGet(key) { try { return localStorage.getItem(key) || ''; } catch { return ''; } }
+function safeStorageSet(key, value) { try { localStorage.setItem(key, value); } catch {} }
 
 $$('.module-button').forEach((button) => button.addEventListener('click', () => activateModule(button.dataset.module)));
 function activateModule(name) {
@@ -104,7 +106,13 @@ $('#pdfSearchInput').addEventListener('input', (event) => { pdfState.search = no
 $$('[data-pdf-filter]').forEach((button) => button.addEventListener('click', () => { pdfState.filter = button.dataset.pdfFilter; $$('[data-pdf-filter]').forEach((b) => b.classList.toggle('active', b.dataset.pdfFilter === pdfState.filter)); renderPdfTable(); }));
 $('#pdfExportBtn').addEventListener('click', exportPdfCsv);
 $('#pdfCopySummaryBtn').addEventListener('click', copyPdfExecutiveSummary);
-$('#pdfPrintBtn').addEventListener('click', () => window.print());
+$('#pdfFinalReportBtn').addEventListener('click', openPdfFinalReportDialog);
+$('#pdfReportDialogClose').addEventListener('click', closePdfFinalReportDialog);
+$('#pdfReportCancelBtn').addEventListener('click', closePdfFinalReportDialog);
+$('#pdfGenerateReportBtn').addEventListener('click', generatePdfFinalReport);
+$('#pdfReportDialog').addEventListener('click', (event) => {
+  if (event.target === $('#pdfReportDialog')) closePdfFinalReportDialog();
+});
 
 async function comparePdfs() {
   pdfState.labels.A = 'SEFAZ';
@@ -123,6 +131,7 @@ async function comparePdfs() {
     };
     const docsA = await readGroup(pdfState.filesA, 'A');
     const docsB = await readGroup(pdfState.filesB, 'B');
+    pdfState.reportMeta = { ...pdfState.reportMeta, ...extractPdfReportMeta(docsA, docsB), runAt: new Date() };
     updatePdfProgress(.86, 'Montando a base oficial da SEFAZ e localizando cada NF no Domínio');
     const rawRowsA = docsA.flatMap((doc) => recordsFromText(doc.text, doc.fileName, 'A'));
     const rawRowsB = docsB.flatMap((doc) => recordsFromText(doc.text, doc.fileName, 'B'));
@@ -135,6 +144,56 @@ async function comparePdfs() {
   } catch (error) {
     showToast(`Não foi possível comparar: ${error.message}`, true);
   } finally { $('#compareBtn').disabled = false; }
+}
+
+
+function firstRegexGroup(text, patterns) {
+  for (const pattern of patterns) {
+    const match = String(text || '').match(pattern);
+    if (match?.[1]) return match[1].replace(/\s+/g, ' ').trim();
+  }
+  return '';
+}
+
+function extractPdfReportMeta(docsA, docsB) {
+  const sefazText = docsA.map((doc) => doc.text || '').join('\n');
+  const dominioText = docsB.map((doc) => doc.text || '').join('\n');
+  const allText = `${sefazText}\n${dominioText}`;
+  const company = firstRegexGroup(sefazText, [
+    /Usu[aá]rio\s*:\s*\d+\s*-\s*([^\n\r]+)/i,
+    /Usu[aá]rio\s*:\s*[^\n\r-]+-\s*([^\n\r]+)/i
+  ]) || firstRegexGroup(dominioText, [
+    /^\s*([A-ZÀ-Ü0-9][A-ZÀ-Ü0-9 .&'\-/]{4,})\s*$/m
+  ]);
+  const document = firstRegexGroup(dominioText, [
+    /CNPJ\s*:\s*([\d.\/\-]{14,18})/i,
+    /\b(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})\b/
+  ]) || firstRegexGroup(allText, [/\b(\d{14})\b/]);
+  const period = firstRegexGroup(allText, [
+    /Per[ií]odo\s*:\s*(\d{2}\/\d{2}\/\d{4}\s*(?:a|at[eé])\s*\d{2}\/\d{2}\/\d{4})/i,
+    /\b(\d{2}\/\d{2}\/\d{4}\s*(?:a|at[eé])\s*\d{2}\/\d{2}\/\d{4})\b/i
+  ]);
+  return { company, document, period };
+}
+
+function parsePtDate(value) {
+  const match = String(value || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+  const date = new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function inferPdfRecordPeriod() {
+  const dates = pdfState.records.flatMap((row) => [row.a?.date, row.b?.date]).map(parsePtDate).filter(Boolean).sort((a, b) => a - b);
+  if (!dates.length) return '';
+  const format = (date) => new Intl.DateTimeFormat('pt-BR').format(date);
+  return `${format(dates[0])} a ${format(dates[dates.length - 1])}`;
+}
+
+function todayIsoLocal() {
+  const date = new Date();
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 }
 
 function updatePdfProgress(ratio, detail) {
@@ -1195,8 +1254,176 @@ function exportPdfCsv() {
   downloadCsv(`conferinho-conciliacao-entradas-${new Date().toISOString().slice(0,10)}.csv`, rows);
 }
 
+
+function closePdfFinalReportDialog() {
+  const dialog = $('#pdfReportDialog');
+  if (dialog?.open) dialog.close();
+}
+
+function getPdfReportReadiness() {
+  const resolved = pdfState.records.filter((row) => row.needsAction && row.resolved);
+  const pending = pdfState.records.filter((row) => row.needsAction && !row.resolved);
+  const resolvedWithoutNote = resolved.filter((row) => !String(row.note || '').trim());
+  return { resolved, pending, resolvedWithoutNote };
+}
+
+function updatePdfReportReadiness() {
+  const box = $('#pdfReportReadiness');
+  if (!box) return;
+  const { resolved, pending, resolvedWithoutNote } = getPdfReportReadiness();
+  const messages = [];
+  if (resolved.length) messages.push(`<span class="report-ready-ok">✓ ${resolved.length} pendência(s) tratada(s) entrarão no relatório.</span>`);
+  if (pending.length) messages.push(`<span class="report-ready-warning">! ${pending.length} pendência(s) ainda estão abertas e serão destacadas.</span>`);
+  if (resolvedWithoutNote.length) messages.push(`<span class="report-ready-warning">! ${resolvedWithoutNote.length} item(ns) resolvido(s) ainda não têm comentário sobre o que foi feito.</span>`);
+  if (!resolved.length && !pending.length) messages.push('<span class="report-ready-ok">✓ A conciliação não possui pendências.</span>');
+  box.innerHTML = messages.join('');
+}
+
+function openPdfFinalReportDialog() {
+  if (!pdfState.records.length || !pdfState.metrics) return showToast('Faça a conciliação de entradas antes de gerar o relatório.', true);
+  const storedResponsible = safeStorageGet('conferinhoReportResponsible');
+  const storedCompany = safeStorageGet('conferinhoReportCompany');
+  $('#pdfReportCompany').value = pdfState.reportMeta.company || storedCompany;
+  $('#pdfReportPeriod').value = pdfState.reportMeta.period || inferPdfRecordPeriod();
+  $('#pdfReportResponsible').value = pdfState.reportMeta.responsible || storedResponsible;
+  $('#pdfReportDate').value = pdfState.reportMeta.reportDate || todayIsoLocal();
+  $('#pdfReportGeneralNote').value = pdfState.reportMeta.generalNote || '';
+  $('#pdfReportIncludeCorrect').checked = pdfState.reportMeta.includeCorrect !== false;
+  updatePdfReportReadiness();
+  const dialog = $('#pdfReportDialog');
+  if (typeof dialog.showModal === 'function') dialog.showModal();
+  else dialog.setAttribute('open', '');
+}
+
+function formatReportDate(value) {
+  if (!value) return new Intl.DateTimeFormat('pt-BR').format(new Date());
+  const date = new Date(`${value}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('pt-BR').format(date);
+}
+
+function reportStatusInfo(pending, resolved, actionRows) {
+  if (!actionRows.length) return {
+    tone: 'success',
+    label: 'CONCILIAÇÃO CONCLUÍDA',
+    title: 'A escrituração do Domínio reproduz a base oficial da SEFAZ.',
+    text: 'Nenhuma diferença foi encontrada nos relatórios analisados.'
+  };
+  if (!pending.length) return {
+    tone: 'warning',
+    label: 'TRATAMENTOS REGISTRADOS — REVALIDAR',
+    title: 'Todas as pendências identificadas receberam tratamento.',
+    text: `${resolved.length} ocorrência(s) foram marcadas como resolvidas. Gere novos relatórios após as correções e execute outra conciliação para comprovar o resultado final.`
+  };
+  return {
+    tone: 'danger',
+    label: 'CONFERÊNCIA COM PENDÊNCIAS',
+    title: `${pending.length} ocorrência(s) ainda precisam de tratamento.`,
+    text: 'O relatório registra o que já foi conferido, as soluções informadas e os itens que ainda impedem o encerramento da conciliação.'
+  };
+}
+
+function pdfReportRowValues(row) {
+  return {
+    nf: (row.a || row.b)?.identifier || '—',
+    supplier: row.a?.description || row.b?.description || 'Fornecedor não identificado',
+    sefaz: row.a?.value == null ? 'Não consta' : money.format(row.a.value),
+    dominio: row.b?.value == null ? 'Não consta' : money.format(row.b.value),
+    impact: row.impact ? money.format(row.impact) : 'R$ 0,00',
+    status: pdfStatusLabel(row.status, row.grouped)
+  };
+}
+
+function buildReportCaseCard(row, mode) {
+  const value = pdfReportRowValues(row);
+  const note = String(row.note || '').trim();
+  const isResolved = mode === 'resolved';
+  return `<article class="report-case report-case-${isResolved ? 'resolved' : 'pending'}">
+    <div class="report-case-head">
+      <div><span class="report-case-status">${escapeHtml(value.status)}</span><h3>NF ${escapeHtml(value.nf)}</h3><p>${escapeHtml(value.supplier)}</p></div>
+      <strong>${escapeHtml(value.impact)}</strong>
+    </div>
+    <div class="report-case-values"><span><small>SEFAZ</small><b>${escapeHtml(value.sefaz)}</b></span><i>→</i><span><small>Domínio</small><b>${escapeHtml(value.dominio)}</b></span></div>
+    ${isResolved
+      ? `<div class="report-treatment"><small>TRATAMENTO REGISTRADO</small><p>${note ? escapeHtml(note) : '<em>Tratamento não descrito pelo responsável.</em>'}</p></div>`
+      : `<div class="report-treatment report-treatment-pending"><small>PRÓXIMA AÇÃO</small><p>${escapeHtml(buildSimpleNextStep(row))}</p></div>`}
+  </article>`;
+}
+
+function buildCorrectRowsTable(rows) {
+  if (!rows.length) return '<p class="report-empty">Nenhuma NF foi classificada como conferida automaticamente.</p>';
+  const body = rows.map((row) => {
+    const value = pdfReportRowValues(row);
+    return `<tr><td>${escapeHtml(value.nf)}</td><td>${escapeHtml(value.supplier)}</td><td>${escapeHtml(value.sefaz)}</td><td>${escapeHtml(value.dominio)}</td><td>${row.grouped ? 'Conferida após soma' : 'Conferida'}</td></tr>`;
+  }).join('');
+  return `<table class="report-table"><thead><tr><th>NF</th><th>Fornecedor</th><th>SEFAZ</th><th>Domínio</th><th>Resultado</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function buildPdfFinalReportHtml(meta) {
+  const metrics = pdfState.metrics;
+  const rows = pdfState.records;
+  const actionRows = rows.filter((row) => row.needsAction);
+  const resolved = actionRows.filter((row) => row.resolved);
+  const pending = actionRows.filter((row) => !row.resolved);
+  const correct = rows.filter((row) => row.a && row.status === 'ok' && !row.needsAction);
+  const groupedCorrect = correct.filter((row) => row.grouped);
+  const status = reportStatusInfo(pending, resolved, actionRows);
+  const resolvedImpact = resolved.reduce((sum, row) => sum + (row.impact || 0), 0);
+  const pendingImpact = pending.reduce((sum, row) => sum + (row.impact || 0), 0);
+  const filesA = pdfState.filesA.map((file) => file.name).join(', ') || 'Não informado';
+  const filesB = pdfState.filesB.map((file) => file.name).join(', ') || 'Não informado';
+  const generalNote = String(meta.generalNote || '').trim();
+  const generatedAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date());
+  const conclusion = pending.length
+    ? `A conciliação permanece aberta com ${pending.length} pendência(s), somando ${money.format(pendingImpact)} de impacto a investigar.`
+    : actionRows.length
+      ? `Os ${resolved.length} apontamento(s) identificados foram tratados e documentados. Recomenda-se reemitir o relatório do Domínio e executar uma nova conciliação para validar as correções.`
+      : 'A base oficial da SEFAZ foi integralmente localizada no Domínio com os valores corretos.';
+
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório de Conciliação — ${escapeHtml(meta.company || 'Conferinho')}</title><style>
+    :root{--navy:#0d2742;--blue:#0f5ca8;--soft:#eef6fd;--green:#167452;--greenSoft:#edf8f3;--orange:#b45c08;--orangeSoft:#fff5e8;--red:#b93d3d;--redSoft:#fff1f1;--muted:#63788b;--border:#dbe5ed}*{box-sizing:border-box}body{margin:0;background:#edf3f7;color:#213a50;font-family:Arial,Helvetica,sans-serif}.report-toolbar{position:sticky;top:0;z-index:10;display:flex;justify-content:flex-end;gap:8px;padding:12px max(16px,calc((100vw - 980px)/2));background:rgba(255,255,255,.96);border-bottom:1px solid var(--border)}button{border:1px solid var(--border);border-radius:9px;padding:10px 14px;background:#fff;color:var(--navy);font-weight:700;cursor:pointer}.primary{border-color:var(--navy);background:var(--navy);color:#fff}.sheet{width:min(980px,calc(100% - 24px));margin:20px auto;padding:42px;background:#fff;box-shadow:0 18px 50px rgba(13,39,66,.12)}.brand-line{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-bottom:20px;border-bottom:3px solid var(--blue)}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;background:var(--blue);color:#fff;font-size:25px;font-weight:900}.brand strong{display:block;color:var(--navy);font-size:22px}.brand small{display:block;margin-top:2px;color:var(--muted)}.report-number{text-align:right;color:var(--muted);font-size:11px}.report-number b{display:block;margin-top:4px;color:var(--navy);font-size:13px}.title-block{padding:28px 0 20px}.title-block span{color:var(--blue);font-size:10px;font-weight:900;letter-spacing:.14em}.title-block h1{margin:7px 0 8px;color:var(--navy);font-size:30px;letter-spacing:-.03em}.title-block p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}.meta-grid{display:grid;grid-template-columns:2fr 1.3fr 1.3fr;gap:10px;margin-top:16px}.meta-item{padding:12px;border:1px solid var(--border);border-radius:10px;background:#fbfdff}.meta-item small,.meta-item strong{display:block}.meta-item small{color:var(--muted);font-size:9px;font-weight:800;text-transform:uppercase}.meta-item strong{margin-top:5px;color:var(--navy);font-size:12px}.status-box{margin:18px 0;padding:18px;border-radius:14px;border-left:5px solid}.status-success{border-color:var(--green);background:var(--greenSoft)}.status-warning{border-color:#db841d;background:var(--orangeSoft)}.status-danger{border-color:var(--red);background:var(--redSoft)}.status-box span{font-size:9px;font-weight:900;letter-spacing:.08em}.status-box h2{margin:6px 0;color:var(--navy);font-size:20px}.status-box p{margin:0;color:#526a7e;font-size:12px;line-height:1.55}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.kpi{padding:13px;border:1px solid var(--border);border-radius:11px}.kpi small,.kpi strong,.kpi span{display:block}.kpi small{color:var(--muted);font-size:9px;font-weight:800}.kpi strong{margin:7px 0 4px;color:var(--navy);font-size:19px}.kpi span{color:var(--muted);font-size:9px}.section{margin-top:28px}.section-head{display:flex;justify-content:space-between;gap:15px;align-items:end;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)}.section-head h2{margin:0;color:var(--navy);font-size:19px}.section-head p{margin:0;color:var(--muted);font-size:10px}.summary-list{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.summary-item{padding:13px;border-radius:11px;background:var(--soft)}.summary-item small,.summary-item strong{display:block}.summary-item small{color:var(--muted);font-size:9px}.summary-item strong{margin-top:6px;color:var(--navy);font-size:17px}.report-cases{display:grid;gap:10px}.report-case{padding:14px;border:1px solid var(--border);border-left:4px solid;border-radius:12px;break-inside:avoid}.report-case-resolved{border-left-color:var(--green)}.report-case-pending{border-left-color:var(--red)}.report-case-head{display:flex;justify-content:space-between;gap:15px}.report-case-head h3{display:inline;margin:0 7px 0 0;color:var(--navy);font-size:16px}.report-case-head p{display:inline;margin:0;color:var(--muted);font-size:10px}.report-case-head>strong{color:var(--navy);font-size:14px}.report-case-status{display:block;margin-bottom:5px;color:var(--muted);font-size:8px;font-weight:900;text-transform:uppercase}.report-case-values{display:flex;align-items:center;gap:8px;margin-top:10px}.report-case-values span{min-width:140px;padding:8px 10px;border-radius:8px;background:#f7fafc}.report-case-values small,.report-case-values b{display:block}.report-case-values small{color:var(--muted);font-size:8px}.report-case-values b{margin-top:3px;color:var(--navy);font-size:12px}.report-case-values i{color:#9aabb8;font-style:normal}.report-treatment{margin-top:10px;padding:10px;border-radius:9px;background:var(--greenSoft)}.report-treatment-pending{background:var(--redSoft)}.report-treatment small{color:var(--green);font-size:8px;font-weight:900}.report-treatment-pending small{color:var(--red)}.report-treatment p{margin:5px 0 0;color:#405b71;font-size:10px;line-height:1.5}.report-table{width:100%;border-collapse:collapse;font-size:9px}.report-table th,.report-table td{padding:7px;border-bottom:1px solid #e7edf2;text-align:left}.report-table th{background:#f4f7fa;color:#5f7487;text-transform:uppercase}.report-table td{color:#3f596e}.general-note,.conclusion{padding:14px;border:1px solid var(--border);border-radius:11px;background:#fbfdff;color:#405b71;font-size:11px;line-height:1.55}.conclusion{border-left:4px solid var(--blue)}.files{font-size:9px;color:var(--muted);line-height:1.5;word-break:break-word}.signature-grid{display:grid;grid-template-columns:1fr 1fr;gap:50px;margin-top:55px}.signature{padding-top:8px;border-top:1px solid #8092a2;text-align:center;color:#5e7385;font-size:10px}.footer{margin-top:30px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;color:#8797a5;font-size:8px}.report-empty{padding:15px;border-radius:10px;background:#f7fafc;color:var(--muted);font-size:11px}@media(max-width:720px){.sheet{padding:22px}.meta-grid,.kpis,.summary-list{grid-template-columns:1fr 1fr}.report-case-values{align-items:stretch;flex-direction:column}.report-case-values span{width:100%}}@media print{@page{size:A4;margin:12mm}body{background:#fff}.report-toolbar{display:none}.sheet{width:100%;margin:0;padding:0;box-shadow:none}.section{break-inside:auto}.report-table{font-size:8px}.brand-line{padding-top:0}}
+  </style></head><body><div class="report-toolbar"><button onclick="window.close()">Fechar</button><button class="primary" onclick="window.print()">Imprimir / salvar PDF</button></div><main class="sheet">
+    <header class="brand-line"><div class="brand"><div class="brand-mark">✓</div><div><strong>Conferinho</strong><small>Compara. Confere. Dá certo.</small></div></div><div class="report-number">RELATÓRIO GERADO EM<b>${escapeHtml(generatedAt)}</b></div></header>
+    <section class="title-block"><span>CONCILIAÇÃO FISCAL DE ENTRADAS</span><h1>Relatório da conferência SEFAZ x Domínio</h1><p>Documento de evidência da comparação realizada, dos resultados encontrados e dos tratamentos registrados pelo responsável.</p><div class="meta-grid"><div class="meta-item"><small>Empresa / cliente</small><strong>${escapeHtml(meta.company || 'Não informado')}</strong></div><div class="meta-item"><small>Competência</small><strong>${escapeHtml(meta.period || 'Não informada')}</strong></div><div class="meta-item"><small>Data do relatório</small><strong>${escapeHtml(formatReportDate(meta.reportDate))}</strong></div><div class="meta-item"><small>Responsável</small><strong>${escapeHtml(meta.responsible || 'Não informado')}</strong></div><div class="meta-item"><small>Base oficial</small><strong>SEFAZ</strong></div><div class="meta-item"><small>Escrituração auditada</small><strong>Domínio</strong></div></div></section>
+    <section class="status-box status-${status.tone}"><span>${escapeHtml(status.label)}</span><h2>${escapeHtml(status.title)}</h2><p>${escapeHtml(status.text)}</p></section>
+    <section class="kpis"><div class="kpi"><small>Total SEFAZ</small><strong>${money.format(metrics.totalA)}</strong><span>${metrics.baseNfs || 0} NF(s) oficiais</span></div><div class="kpi"><small>Total Domínio</small><strong>${money.format(metrics.totalB)}</strong><span>${metrics.domainNfs || 0} NF(s) consolidadas</span></div><div class="kpi"><small>Diferença original</small><strong>${formatSignedMoney(metrics.netDifference)}</strong><span>Domínio − SEFAZ</span></div><div class="kpi"><small>Base correta</small><strong>${(metrics.correctRate || 0).toFixed(1).replace('.', ',')}%</strong><span>${metrics.correctBaseCount || 0} de ${metrics.baseNfs || 0} NFs</span></div></section>
+    <section class="section"><div class="section-head"><h2>Resumo do trabalho realizado</h2><p>Resultado dos relatórios analisados</p></div><div class="summary-list"><div class="summary-item"><small>Conferidas sem correção</small><strong>${correct.length}</strong></div><div class="summary-item"><small>Conferidas após soma</small><strong>${groupedCorrect.length}</strong></div><div class="summary-item"><small>Pendências identificadas</small><strong>${actionRows.length}</strong></div><div class="summary-item"><small>Pendências tratadas</small><strong>${resolved.length}</strong></div><div class="summary-item"><small>Pendências abertas</small><strong>${pending.length}</strong></div><div class="summary-item"><small>Valor tratado / aberto</small><strong>${money.format(resolvedImpact)} / ${money.format(pendingImpact)}</strong></div></div></section>
+    ${generalNote ? `<section class="section"><div class="section-head"><h2>Observação geral do responsável</h2></div><div class="general-note">${escapeHtml(generalNote)}</div></section>` : ''}
+    <section class="section"><div class="section-head"><h2>Pendências tratadas</h2><p>${resolved.length} ocorrência(s) com solução registrada</p></div><div class="report-cases">${resolved.length ? resolved.map((row) => buildReportCaseCard(row, 'resolved')).join('') : '<p class="report-empty">Nenhuma pendência foi marcada como resolvida nesta conferência.</p>'}</div></section>
+    <section class="section"><div class="section-head"><h2>Pendências ainda abertas</h2><p>${pending.length} ocorrência(s) aguardando tratamento</p></div><div class="report-cases">${pending.length ? pending.map((row) => buildReportCaseCard(row, 'pending')).join('') : '<p class="report-empty">Nenhuma pendência permanece aberta.</p>'}</div></section>
+    ${meta.includeCorrect ? `<section class="section"><div class="section-head"><h2>NFs conferidas</h2><p>${correct.length} documento(s) sem diferença</p></div>${buildCorrectRowsTable(correct)}</section>` : ''}
+    <section class="section"><div class="section-head"><h2>Conclusão</h2></div><div class="conclusion">${escapeHtml(conclusion)}</div></section>
+    <section class="section"><div class="section-head"><h2>Arquivos utilizados</h2></div><p class="files"><b>SEFAZ:</b> ${escapeHtml(filesA)}<br><b>Domínio:</b> ${escapeHtml(filesB)}</p></section>
+    <div class="signature-grid"><div class="signature">${escapeHtml(meta.responsible || 'Responsável pela conferência')}</div><div class="signature">Responsável pela revisão / aprovação</div></div>
+    <footer class="footer"><span>Relatório gerado pelo Conferinho.</span><span>Os tratamentos registrados refletem as informações fornecidas pelo responsável.</span></footer>
+  </main></body></html>`;
+}
+
+function generatePdfFinalReport() {
+  if (!pdfState.records.length || !pdfState.metrics) return showToast('Faça a conciliação antes de gerar o relatório.', true);
+  const meta = {
+    company: $('#pdfReportCompany').value.trim(),
+    period: $('#pdfReportPeriod').value.trim(),
+    responsible: $('#pdfReportResponsible').value.trim(),
+    reportDate: $('#pdfReportDate').value,
+    generalNote: $('#pdfReportGeneralNote').value.trim(),
+    includeCorrect: $('#pdfReportIncludeCorrect').checked,
+    document: pdfState.reportMeta.document || '',
+    runAt: pdfState.reportMeta.runAt || new Date()
+  };
+  pdfState.reportMeta = { ...pdfState.reportMeta, ...meta };
+  if (meta.responsible) safeStorageSet('conferinhoReportResponsible', meta.responsible);
+  if (meta.company) safeStorageSet('conferinhoReportCompany', meta.company);
+  const reportWindow = window.open('', '_blank');
+  if (!reportWindow) return showToast('O navegador bloqueou a abertura do relatório. Libere pop-ups para este site.', true);
+  reportWindow.document.open();
+  reportWindow.document.write(buildPdfFinalReportHtml(meta));
+  reportWindow.document.close();
+  closePdfFinalReportDialog();
+  showToast('Relatório final aberto. Use “Imprimir / salvar PDF”.');
+}
+
 function resetPdf() {
-  pdfState.filesA=[];pdfState.filesB=[];pdfState.records=[];pdfState.filter='all';pdfState.search='';pdfState.metrics=null;pdfState.labels={A:'SEFAZ',B:'Domínio'};
+  pdfState.filesA=[];pdfState.filesB=[];pdfState.records=[];pdfState.filter='all';pdfState.search='';pdfState.metrics=null;pdfState.labels={A:'SEFAZ',B:'Domínio'};pdfState.reportMeta={company:'',document:'',period:'',responsible:safeStorageGet('conferinhoReportResponsible'),generalNote:'',reportDate:'',includeCorrect:true,runAt:null};
   $('#reportAInput').value='';$('#reportBInput').value='';$('#reportAFileList').innerHTML='';$('#reportBFileList').innerHTML='';$('#reportALabel').value='SEFAZ';$('#reportBLabel').value='Domínio';$('#pdfSearchInput').value='';$('#pdfResults').classList.add('hidden');$('#pdfProgress').classList.add('hidden');$('#compareBtn').disabled=true;$('#pdfStatusHint').textContent='Envie a base oficial da SEFAZ e o relatório de entradas do Domínio.';showToast('Conciliação de entradas limpa.');
 }
 
