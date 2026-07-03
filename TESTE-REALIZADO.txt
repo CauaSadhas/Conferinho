@@ -1,17 +1,16 @@
-TESTES DA VERSÃO V8
+TESTE DE VALIDAÇÃO — RELATÓRIO SEFAZ CRISTIANE (JUNHO/2026)
 
-- Validação de sintaxe do app.js: aprovado.
-- Validação dos IDs da página: nenhum ID duplicado ou ausente.
-- Carregamento da nova interface em navegador real: aprovado, sem erros JavaScript.
-- Exibição do filtro “Para resolver” como padrão: aprovado.
-- Renderização de notas ausentes no Domínio: aprovada.
-- Renderização de valores divergentes: aprovada.
-- Renderização de lançamentos extras no Domínio: aprovada.
-- Exibição da consolidação de lançamentos da mesma NF: preservada.
-- Marcação de uma pendência como resolvida: aprovada.
-- Atualização dos indicadores após resolução: aprovada.
-- Abertura automática do campo para registrar a solução: aprovada.
-- Filtro de pendências resolvidas: aprovado.
-- Abertura de detalhes da análise: aprovada.
-- Busca por número da NF: aprovada.
-- Teste responsivo previsto por regras para desktop, tablet e celular.
+Relatório analisado: 54 NFs em 2 páginas.
+
+Resultado esperado da coluna Total NF:
+- Quantidade de linhas: 54
+- Soma da coluna Total NF: R$ 69.914,09
+
+Valor que a versão anterior mostrava:
+- R$ 42.700,04
+
+Diagnóstico:
+- R$ 42.700,04 corresponde exatamente à soma da coluna Base Cálc. ICMS.
+- A nova regra selecionou o primeiro valor após UF e chegou a R$ 69.914,09.
+
+O PDF do cliente não foi incluído no pacote de atualização.

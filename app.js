@@ -1767,16 +1767,14 @@ function isSumReportTable(text) {
 
 function parseSumReportTableRow(line, tableMode) {
   const source = String(line || '');
-  const allValues = sumMoneyCandidates(source);
-  if (!allValues.length) return null;
-  const selectedValue = allValues[allValues.length - 1];
-
-  const prefixBeforeValue = source.slice(0, selectedValue.index);
-  const dateMatches = [...prefixBeforeValue.matchAll(/\b\d{1,2}\D{1,3}\d{1,2}\D{1,3}\d{2,4}\b/g)];
+  const dateMatches = [...source.matchAll(/\b\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}\b/g)];
   const dateMatch = dateMatches[dateMatches.length - 1];
-  const yearMatches = [...prefixBeforeValue.matchAll(/\b20\d{2}\b/g)];
+  const yearMatches = [...source.matchAll(/\b20\d{2}\b/g)];
   const yearMatch = yearMatches[yearMatches.length - 1];
-  const dateStart = dateMatch?.index ?? (yearMatch?.index != null ? Math.max(0, yearMatch.index - 9) : selectedValue.index);
+  if (!dateMatch && !yearMatch) return null;
+
+  const dateStart = dateMatch?.index ?? Math.max(0, yearMatch.index - 9);
+  const dateEnd = dateMatch ? dateMatch.index + dateMatch[0].length : yearMatch.index + yearMatch[0].length;
   const beforeDate = source.slice(0, dateStart);
   const compactBeforeDate = beforeDate.replace(/[|,;]+/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -1791,17 +1789,27 @@ function parseSumReportTableRow(line, tableMode) {
   const nf = lastDocument ? invoiceTokens[0] : invoiceTokens[invoiceTokens.length - 1];
   if (!nf) return null;
 
-  const afterDate = normalize(source.slice(dateStart));
-  const stateAfterDate = /\b(?:ac|al|ap|am|ba|ce|df|es|go|ma|mt|ms|mg|pa|pb|pr|pe|pi|rj|rn|rs|ro|rr|sc|sp|se|to)\b/.test(afterDate);
-  const rowLooksTabular = documentMatches.length > 0 && Boolean(dateMatch || yearMatch) && stateAfterDate;
+  // Em relatórios SEFAZ a ordem costuma ser: data, UF, Total NF, Base Cálc. ICMS...
+  // Por isso o Total NF é o PRIMEIRO valor monetário depois da data/UF — nunca o último da linha.
+  const suffixAfterDate = source.slice(dateEnd);
+  const stateMatch = suffixAfterDate.match(/\b(?:AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b/i);
+  const valueZoneStart = dateEnd + (stateMatch ? stateMatch.index + stateMatch[0].length : 0);
+  const valueZone = source.slice(valueZoneStart);
+  const valueCandidates = sumMoneyCandidates(valueZone);
+  if (!valueCandidates.length) return null;
+  const selectedValue = valueCandidates[0];
+
+  const stateAfterDate = Boolean(stateMatch);
+  const rowLooksTabular = documentMatches.length > 0 && stateAfterDate;
   if (!tableMode && !rowLooksTabular) return null;
 
+  const ignoredColumns = valueCandidates.length > 1;
   return {
     nf,
     value: selectedValue.value,
-    note: tableMode
-      ? 'Lido diretamente das colunas Nº NF e Total NF'
-      : 'Linha de relatório identificada por CNPJ, NF, data, UF e valor',
+    note: ignoredColumns
+      ? 'Total NF lido como o primeiro valor após a UF; as colunas seguintes, como Base Cálc. ICMS, foram ignoradas'
+      : 'Valor lido diretamente da coluna Total NF',
     raw: source.slice(0, 260)
   };
 }
@@ -1893,11 +1901,14 @@ function finalizeSumRecords(records) {
   const exactSeen = new Set();
   const unique = [];
   records.forEach((record) => {
-    const exactKey = `${record.fileName}|${record.page}|${record.nf}|${Number(record.value).toFixed(2)}`;
+    // Remove apenas a mesma linha capturada duas vezes pelo leitor.
+    // Números de NF repetidos em linhas diferentes continuam na soma, pois podem pertencer a emitentes distintos.
+    const exactKey = `${record.fileName}|${record.page}|${record.nf}|${Number(record.value).toFixed(2)}|${normalize(record.raw)}`;
     if (exactSeen.has(exactKey)) return;
     exactSeen.add(exactKey);
     unique.push(record);
   });
+
   const byNf = new Map();
   unique.forEach((record) => {
     if (!byNf.has(record.nf)) byNf.set(record.nf, []);
@@ -1905,17 +1916,17 @@ function finalizeSumRecords(records) {
   });
   byNf.forEach((group) => {
     if (group.length <= 1) return;
-    group.forEach((record, index) => {
-      record.status = 'review';
-      record.note = index === 0 ? 'Esta NF apareceu mais de uma vez; confira as linhas repetidas' : 'Possível duplicidade: linha desmarcada automaticamente';
-      if (index > 0) record.include = false;
+    group.forEach((record) => {
+      if (record.status === 'confirmed') {
+        record.note += '. O mesmo número de NF aparece em outra linha, mas ambas permanecem incluídas na soma da coluna';
+      }
     });
   });
   return unique.sort((a, b) => Number(a.nf) - Number(b.nf) || a.fileName.localeCompare(b.fileName));
 }
 
 function renderSumResults() {
-  $('#sumResultSubtitle').textContent = `${sumState.records.length} linha(s) identificada(s) em ${sumState.files.length} arquivo(s). Revise as marcações antes de usar o total.`;
+  $('#sumResultSubtitle').textContent = `${sumState.records.length} linha(s) da coluna Total NF identificada(s) em ${sumState.files.length} arquivo(s). Revise as marcações antes de usar o total.`;
   renderSumWarnings();
   renderSumTable();
   $('#sumResults').classList.remove('hidden');
@@ -1941,7 +1952,7 @@ function renderSumTable() {
     tr.className = record.include ? '' : 'sum-row-excluded';
     const statusLabel = record.status === 'confirmed' ? 'Reconhecida' : record.status === 'manual' ? 'Manual' : 'Revisar';
     const statusClass = record.status === 'confirmed' ? 'status-ok' : record.status === 'manual' ? 'status-duplicate' : 'status-divergent';
-    tr.innerHTML = `<td><label class="sum-check"><input type="checkbox" data-sum-action="include" data-id="${escapeHtml(record.id)}" ${record.include ? 'checked' : ''}><span>Somar</span></label></td><td><span class="status-badge ${statusClass}" title="${escapeHtml(record.note)}">${statusLabel}</span><small class="sum-method">${escapeHtml(record.method)}</small></td><td><input class="sum-edit sum-nf-input" data-sum-action="nf" data-id="${escapeHtml(record.id)}" value="${escapeHtml(record.nf)}" inputmode="numeric" aria-label="Número da NF"></td><td class="align-right"><input class="sum-edit sum-value-input" data-sum-action="value" data-id="${escapeHtml(record.id)}" value="${escapeHtml(formatSumInputValue(record.value))}" inputmode="decimal" aria-label="Valor total da NF"></td><td><span class="file-name" title="${escapeHtml(record.fileName)}">${escapeHtml(record.fileName)}</span><small class="sum-method">Página ${escapeHtml(record.page)}</small></td><td><span class="sum-raw" title="${escapeHtml(record.raw)}">${escapeHtml(record.raw)}</span></td><td><button class="sum-delete" data-sum-action="delete" data-id="${escapeHtml(record.id)}" type="button" title="Excluir linha">×</button></td>`;
+    tr.innerHTML = `<td><label class="sum-check"><input type="checkbox" data-sum-action="include" data-id="${escapeHtml(record.id)}" ${record.include ? 'checked' : ''}><span>Somar</span></label></td><td><span class="status-badge ${statusClass}" title="${escapeHtml(record.note)}">${statusLabel}</span><small class="sum-method">${escapeHtml(record.method)}</small></td><td><input class="sum-edit sum-nf-input" data-sum-action="nf" data-id="${escapeHtml(record.id)}" value="${escapeHtml(record.nf)}" inputmode="numeric" aria-label="Número da NF"></td><td class="align-right"><input class="sum-edit sum-value-input" data-sum-action="value" data-id="${escapeHtml(record.id)}" value="${escapeHtml(formatSumInputValue(record.value))}" inputmode="decimal" aria-label="Valor da coluna Total NF"></td><td><span class="file-name" title="${escapeHtml(record.fileName)}">${escapeHtml(record.fileName)}</span><small class="sum-method">Página ${escapeHtml(record.page)}</small></td><td><span class="sum-raw" title="${escapeHtml(record.raw)}">${escapeHtml(record.raw)}</span></td><td><button class="sum-delete" data-sum-action="delete" data-id="${escapeHtml(record.id)}" type="button" title="Excluir linha">×</button></td>`;
     tbody.appendChild(tr);
   });
   const visible = sumFilteredRecords().length;
@@ -2027,10 +2038,10 @@ function exportSumCsv() {
   const records = sumState.records.filter((record) => record.include && Number.isFinite(Number(record.value)));
   if (!records.length) return showToast('Nenhuma NF está marcada para entrar na soma.', true);
   const total = records.reduce((sum, record) => sum + Number(record.value), 0);
-  const rows = [['Número da NF', 'Valor total', 'Arquivo', 'Página', 'Forma de leitura', 'Situação', 'Observação', 'Trecho reconhecido']];
+  const rows = [['Número da NF', 'Valor da coluna Total NF', 'Arquivo', 'Página', 'Forma de leitura', 'Situação', 'Observação', 'Trecho reconhecido']];
   records.forEach((record) => rows.push([record.nf, Number(record.value).toFixed(2).replace('.', ','), record.fileName, record.page, record.method, record.status === 'confirmed' ? 'Reconhecida' : record.status === 'manual' ? 'Manual' : 'Revisar', record.note, record.raw]));
   rows.push([]);
-  rows.push(['TOTAL DAS NFs', total.toFixed(2).replace('.', ',')]);
+  rows.push(['TOTAL DA COLUNA TOTAL NF', total.toFixed(2).replace('.', ',')]);
   downloadCsv(`conferinho-soma-nfs-${new Date().toISOString().slice(0, 10)}.csv`, rows);
 }
 

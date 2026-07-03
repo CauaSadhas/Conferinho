@@ -1,0 +1,16 @@
+SOMADOR DE NFs — CORREÇÃO DA COLUNA TOTAL NF
+
+Problema corrigido
+- O leitor usava o último valor monetário da linha.
+- Em relatórios SEFAZ com as colunas "Total NF" e "Base Cálc. ICMS", isso fazia o sistema somar a Base Cálc. ICMS.
+
+Nova regra
+- O sistema identifica a linha pela NF, data e UF.
+- Usa o primeiro valor monetário depois da data/UF, que corresponde à coluna Total NF.
+- Ignora valores das colunas posteriores, como Base Cálc. ICMS, ICMS, isentas e outras.
+- Números de NF repetidos em linhas diferentes permanecem incluídos, pois podem pertencer a emitentes distintos.
+- Só uma captura realmente idêntica da mesma linha é removida como duplicação do leitor.
+
+Melhorias visuais
+- O painel deixa explícito que a coluna somada é Total NF.
+- O CSV identifica o campo como "Valor da coluna Total NF".

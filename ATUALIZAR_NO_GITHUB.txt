@@ -1,16 +1,13 @@
-CONFERINHO — ATUALIZAÇÃO V8
-Fluxo simplificado da Conciliação de Entradas
+CONFERINHO — SOMADOR DA COLUNA TOTAL NF V9
 
-1. Extraia o arquivo ZIP.
-2. Abra o repositório verdadeiro do Conferinho no GitHub.
-3. Substitua estes arquivos na raiz do repositório:
+1. Extraia este arquivo ZIP.
+2. Abra o repositório do Conferinho no GitHub.
+3. Substitua na raiz do projeto:
    - index.html
    - styles.css
    - app.js
-4. NÃO apague a pasta assets existente no repositório.
+4. Não apague a pasta assets.
 5. Clique em Commit changes.
-6. Aguarde a Vercel publicar a nova versão.
-7. Atualize a página usando Ctrl + F5 para evitar que o navegador mostre arquivos antigos.
+6. Aguarde a publicação da Vercel e atualize o site com Ctrl + F5.
 
-A lógica de comparação SEFAZ x Domínio e a consolidação automática de lançamentos foram mantidas.
-A principal mudança desta versão está na organização e facilidade de uso do resultado.
+A atualização mantém os demais módulos do Conferinho.
