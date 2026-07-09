@@ -1,0 +1,21 @@
+TESTES V29
+
+Arquivos validados:
+- Estado de Mato Grosso do Sul.pdf
+- Entradas.pdf-diego q franca.pdf
+
+Validação do leitor:
+- 13 registros extraídos da SEFAZ;
+- total SEFAZ: R$ 12.277,21;
+- 23 registros extraídos do Domínio;
+- total geral Domínio: R$ 44.867,57;
+- espécies detectadas no Domínio: 36 e 41;
+- espécie comparável inferida: 36;
+- 13 registros comparáveis, total R$ 12.277,21;
+- 10 registros fora do escopo, total R$ 32.590,36;
+- 13 correspondências exatas por número e valor.
+
+Validação técnica:
+- sintaxe JavaScript validada com node --check;
+- códigos pontuados não são mais interpretados como valores;
+- filtro de espécie é conservador: só é aplicado quando uma espécie concentra pelo menos 75% das correspondências exatas e possui ao menos 3 correspondências.

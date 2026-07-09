@@ -3,7 +3,7 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const pdfState = { filesA: [], filesB: [], records: [], filter: "all", search: "", labels: { A: "SEFAZ", B: "Domínio" }, metrics: null, sourceDocs: { A: [], B: [] }, extractionQuality: null, reportMeta: { company: "", document: "", period: "", responsible: "", generalNote: "", reportDate: "", includeCorrect: true, runAt: null } };
+const pdfState = { filesA: [], filesB: [], records: [], filter: "all", search: "", labels: { A: "SEFAZ", B: "Domínio" }, metrics: null, sourceDocs: { A: [], B: [] }, extractionQuality: null, scopeInfo: null, reportMeta: { company: "", document: "", period: "", responsible: "", generalNote: "", reportDate: "", includeCorrect: true, runAt: null } };
 const nfseState = { files: [], notes: [], warnings: [], processed: 0, failed: 0, filter: "retained", search: "" };
 const sumState = { files: [], records: [], warnings: [], pages: 0, filter: "all", search: "" };
 
@@ -152,11 +152,13 @@ async function comparePdfs() {
     pdfState.reportMeta = { ...pdfState.reportMeta, ...extractPdfReportMeta(docsA, docsB), runAt: new Date() };
     updatePdfProgress(.86, 'Montando a base oficial da SEFAZ e localizando cada NF no Domínio');
     const rawRowsA = docsA.flatMap((doc) => recordsFromText(doc.text, doc.fileName, 'A'));
-    const rawRowsB = docsB.flatMap((doc) => recordsFromText(doc.text, doc.fileName, 'B'));
-    updatePdfProgress(.92, 'Somando desdobramentos do Domínio e investigando as diferenças');
+    const rawRowsBAll = docsB.flatMap((doc) => recordsFromText(doc.text, doc.fileName, 'B'));
+    pdfState.scopeInfo = inferComparableDomainScope(rawRowsA, rawRowsBAll);
+    const rawRowsB = pdfState.scopeInfo.comparableRows;
+    updatePdfProgress(.92, 'Separando documentos comparáveis, somando desdobramentos e investigando as diferenças');
     const rowsA = consolidatePdfRecords(rawRowsA, 'A');
     const rowsB = consolidatePdfRecords(rawRowsB, 'B');
-    pdfState.extractionQuality = buildExtractionQuality(docsA, docsB, rawRowsA, rawRowsB);
+    pdfState.extractionQuality = buildExtractionQuality(docsA, docsB, rawRowsA, rawRowsBAll);
     let matchedRows = matchRecords(rowsA, rowsB);
     matchedRows = rescueCrossNumberMatches(matchedRows);
     matchedRows = convertUnsafeAbsencesToReview(matchedRows, pdfState.extractionQuality, docsA, docsB);
@@ -286,8 +288,16 @@ function normalizeInvoiceNumber(value) {
 }
 
 function getMoneyMatches(text) {
+  const source = String(text || '');
   const regex = new RegExp(PDF_MONEY_SOURCE, 'gi');
-  return [...String(text || '').matchAll(regex)].map((match) => ({ raw: match[0], index: match.index || 0, value: parseLocaleNumber(match[0]) }));
+  return [...source.matchAll(regex)].filter((match) => {
+    const start = match.index || 0;
+    const end = start + match[0].length;
+    const previous = source[start - 1] || '';
+    const next = source[end] || '';
+    // Evita interpretar códigos pontuados (ex.: 36.901.555) como valores monetários.
+    return !/[0-9.]/.test(previous) && !/[0-9]/.test(next);
+  }).map((match) => ({ raw: match[0], index: match.index || 0, value: parseLocaleNumber(match[0]) }));
 }
 
 function buildLogicalPdfLines(text) {
@@ -308,7 +318,7 @@ function cleanDescription(value) {
   return String(value || '').replace(/\s+/g, ' ').replace(/^[-–—|:]+|[-–—|:]+$/g, '').trim();
 }
 
-function makePdfRecord({ side, fileName, identifier, description, date, value, raw, document = '', series = '', confidence = 50, extraction = 'generic' }) {
+function makePdfRecord({ side, fileName, identifier, description, date, value, raw, document = '', series = '', species = '', supplierCode = '', confidence = 50, extraction = 'generic' }) {
   const note = normalizeInvoiceNumber(identifier);
   if (!note || value == null) return null;
   return {
@@ -321,6 +331,8 @@ function makePdfRecord({ side, fileName, identifier, description, date, value, r
     raw,
     document: onlyDigits(document),
     series: String(series || '').replace(/[^0-9A-Za-z-]/g, '').trim(),
+    species: String(species || '').replace(/[^0-9A-Za-z-]/g, '').trim(),
+    supplierCode: String(supplierCode || '').replace(/[^0-9A-Za-z.\/-]/g, '').trim(),
     confidence,
     extraction
   };
@@ -341,16 +353,46 @@ function parseEntriesLine(line, fileName, side) {
   const noteMatch = afterDate.match(/^\s*(\d{1,12})\b/);
   if (!noteMatch) return null;
   const afterNote = afterDate.slice((noteMatch.index || 0) + noteMatch[0].length);
-  const moneyMatches = getMoneyMatches(afterNote);
-  if (!moneyMatches.length) return null;
-  const metadataMatch = afterNote.match(/^\s*(\d{1,4})\s+\d{1,3}\s+\d{1,3}\s+/);
-  const series = metadataMatch?.[1] || '';
-  let supplierPart = afterNote.replace(/^\s*\d+\s+\d+\s+\d+\s+/, '').replace(/^\s*\d+\s+\d+\s+/, '');
+
+  // O relatório padrão do Domínio pode deixar a série em branco. Nesse caso,
+  // aparecem somente Espécie + Código do fornecedor antes do nome.
+  const threeFields = afterNote.match(/^\s*(\d{1,4})\s+(\d{1,3})\s+(\d{1,8})\s+/);
+  const twoFields = !threeFields ? afterNote.match(/^\s*(\d{1,3})\s+(\d{1,8})\s+/) : null;
+  const series = threeFields?.[1] || '';
+  const species = threeFields?.[2] || twoFields?.[1] || '';
+  const supplierCode = threeFields?.[3] || twoFields?.[2] || '';
+  const metadataLength = threeFields?.[0]?.length || twoFields?.[0]?.length || 0;
+
+  // O valor contábil é o primeiro valor depois da UF. Isso impede que códigos
+  // como "36.901.555" sejam confundidos com R$ 36.901,55.
+  const valueAfterUf = afterNote.match(new RegExp(`\\b[A-Z]{2}\\s+(${PDF_MONEY_SOURCE})(?=\\s+(?:ICMS\\b|ISS\\b|IPI\\b|0[.,]00\\b|$))`, 'i'));
+  const fallbackMoney = getMoneyMatches(afterNote.slice(metadataLength));
+  const accountingValue = valueAfterUf ? parseLocaleNumber(valueAfterUf[1]) : fallbackMoney[0]?.value;
+  if (accountingValue == null) return null;
+
+  let supplierPart = afterNote.slice(metadataLength);
   const cfopIndex = supplierPart.search(/\s+\d[-.]\d{3}\s+/);
   if (cfopIndex >= 0) supplierPart = supplierPart.slice(0, cfopIndex);
-  else supplierPart = supplierPart.slice(0, moneyMatches[0].index);
+  else {
+    const valueIndex = valueAfterUf ? supplierPart.indexOf(valueAfterUf[0]) : -1;
+    if (valueIndex >= 0) supplierPart = supplierPart.slice(0, valueIndex);
+  }
   const documentMatches = [...line.matchAll(/\b\d{11,14}\b/g)];
-  return makePdfRecord({ side, fileName, identifier: noteMatch[1], description: supplierPart, date: dateMatch[0], value: moneyMatches[0].value, raw: line, document: documentMatches.at(-1)?.[0] || '', series, confidence: 96, extraction: 'entries' });
+  return makePdfRecord({
+    side,
+    fileName,
+    identifier: noteMatch[1],
+    description: supplierPart,
+    date: dateMatch[0],
+    value: accountingValue,
+    raw: line,
+    document: documentMatches.at(-1)?.[0] || '',
+    series,
+    species,
+    supplierCode,
+    confidence: 98,
+    extraction: 'entries-column-aware'
+  });
 }
 
 function parseCashbookLine(line, fileName, side) {
@@ -545,6 +587,7 @@ function canJoinConsolidationCluster(record, cluster) {
   const representative = cluster[0];
   if (record.document && representative.document && record.document !== representative.document) return false;
   if (record.series && representative.series && record.series !== representative.series) return false;
+  if (record.species && representative.species && record.species !== representative.species) return false;
   const left = meaningfulSupplierText(record.description);
   const right = meaningfulSupplierText(representative.description);
   if (left && right && left.length >= 5 && right.length >= 5 && similarity(left, right) < 0.18) return false;
@@ -573,6 +616,7 @@ function consolidatePdfRecords(records, side) {
       const uniqueDates = [...new Set(components.map((item) => item.date).filter(Boolean))];
       const uniqueDocuments = [...new Set(components.map((item) => item.document).filter(Boolean))];
       const uniqueSeries = [...new Set(components.map((item) => item.series).filter(Boolean))];
+      const uniqueSpecies = [...new Set(components.map((item) => item.species).filter(Boolean))];
       const identicalSignatureCount = new Map();
       components.forEach((item) => {
         const signature = [item.value?.toFixed(2), item.date, meaningfulSupplierText(item.description)].join('|');
@@ -588,6 +632,7 @@ function consolidatePdfRecords(records, side) {
         date: uniqueDates.length === 1 ? uniqueDates[0] : uniqueDates.join(', '),
         document: uniqueDocuments.length === 1 ? uniqueDocuments[0] : representative.document || '',
         series: uniqueSeries.length === 1 ? uniqueSeries[0] : representative.series || '',
+        species: uniqueSpecies.length === 1 ? uniqueSpecies[0] : representative.species || '',
         components: components.map((item, index) => ({
           id: `${side}-${identifier}-${clusterIndex}-${index}`,
           value: item.value,
@@ -596,13 +641,15 @@ function consolidatePdfRecords(records, side) {
           description: item.description,
           document: item.document,
           series: item.series,
+          species: item.species,
+          supplierCode: item.supplierCode,
           raw: item.raw
         })),
         componentCount: components.length,
         consolidated: components.length > 1,
         hasIdenticalComponents,
         confidence: Math.min(...components.map((item) => Number(item.confidence || 0))),
-        consolidationKey: `${identifier}|${uniqueDocuments.join(',')}|${uniqueSeries.join(',')}|${clusterIndex}`
+        consolidationKey: `${identifier}|${uniqueDocuments.join(',')}|${uniqueSeries.join(',')}|${uniqueSpecies.join(',')}|${clusterIndex}`
       });
     });
   });
@@ -688,7 +735,8 @@ function extractDeclaredReportSummary(text) {
   const countPatterns = [
     /qtde\s+(?:de\s+)?notas?\s*[:=-]?\s*(\d{1,7})/i,
     /quantidade\s+(?:de\s+)?notas?\s*[:=-]?\s*(\d{1,7})/i,
-    /total\s+(?:de\s+)?notas?\s*[:=-]?\s*(\d{1,7})/i
+    /total\s+(?:de\s+)?notas?\s*[:=-]?\s*(\d{1,7})/i,
+    /visualizando\s+\d+\s*-\s*\d+\s+de\s+(\d{1,7})/i
   ];
   let declaredCount = null;
   for (const pattern of countPatterns) {
@@ -698,12 +746,13 @@ function extractDeclaredReportSummary(text) {
   const totalPatterns = [
     /(?:qtde\s+(?:de\s+)?notas?[^\n\r]{0,80})total\s*[:=-]?\s*(R\$\s*)?([\d.]+,\d{2})/i,
     /total\s+(?:geral|das?\s+notas?|nf(?:-?e)?s?)\s*[:=-]?\s*(R\$\s*)?([\d.]+,\d{2})/i,
-    /valor\s+total\s*[:=-]?\s*(R\$\s*)?([\d.]+,\d{2})/i
+    /valor\s+total\s*[:=-]?\s*(R\$\s*)?([\d.]+,\d{2})/i,
+    /total\s+geral[\s\S]{0,35}?(?:^|\s)\d*\s+([\d.]+,\d{2})/i
   ];
   let declaredTotal = null;
   for (const pattern of totalPatterns) {
     const match = source.match(pattern);
-    if (match) { declaredTotal = parseLocaleNumber(match[2]); break; }
+    if (match) { declaredTotal = parseLocaleNumber(match[2] || match[1]); break; }
   }
   return { declaredCount, declaredTotal, hasText: normalized.length >= 35 };
 }
@@ -807,6 +856,37 @@ function rescueCrossNumberMatches(records) {
     return true;
   });
   return [...untouched, ...rescued];
+}
+
+function inferComparableDomainScope(rowsA, rowsB) {
+  const overlapBySpecies = new Map();
+  let totalOverlaps = 0;
+  rowsB.forEach((domainRow) => {
+    if (!domainRow.species) return;
+    const exact = rowsA.some((sefazRow) =>
+      sefazRow.identifier === domainRow.identifier &&
+      Math.abs(Number(sefazRow.value || 0) - Number(domainRow.value || 0)) <= 0.01
+    );
+    if (!exact) return;
+    totalOverlaps += 1;
+    overlapBySpecies.set(domainRow.species, (overlapBySpecies.get(domainRow.species) || 0) + 1);
+  });
+  const ranking = [...overlapBySpecies.entries()].sort((a, b) => b[1] - a[1]);
+  const best = ranking[0];
+  const comparableSpecies = best && best[1] >= 3 && best[1] / Math.max(totalOverlaps, 1) >= 0.75 ? best[0] : '';
+  if (!comparableSpecies) {
+    return { comparableRows: rowsB, excludedRows: [], comparableSpecies: '', totalOverlaps, reason: 'Não foi possível identificar com segurança uma espécie exclusiva para a base NF-e.' };
+  }
+  const comparableRows = rowsB.filter((row) => !row.species || row.species === comparableSpecies);
+  const excludedRows = rowsB.filter((row) => row.species && row.species !== comparableSpecies);
+  return {
+    comparableRows,
+    excludedRows,
+    comparableSpecies,
+    totalOverlaps,
+    excludedTotal: excludedRows.reduce((sum, row) => sum + Number(row.value || 0), 0),
+    reason: `A espécie ${comparableSpecies} concentrou ${best[1]} de ${totalOverlaps} correspondências exatas com a base SEFAZ.`
+  };
 }
 
 function chooseBestSameNoteMatch(record, candidates, usedIndexes) {
@@ -1116,7 +1196,9 @@ function renderPdfResults(rowsA, rowsB, rawRowsA = rowsA, rawRowsB = rowsB) {
   const quality = pdfState.extractionQuality;
   const qualityWarnings = [quality?.A, quality?.B].filter((side) => side && !side.safe).map((side) => `${side.label}: leitura exige revisão`).join(' · ');
   const reviewCount = pdfState.records.filter((row) => row.status === 'review-extraction').length;
-  $('#pdfValidationPanel').innerHTML = `<strong>Regra segura da conciliação:</strong> a SEFAZ é a base oficial. O Conferinho soma desdobramentos do Domínio, procura a NF por número, fornecedor/documento e valor e faz uma segunda busca no texto bruto do PDF. <b>Uma nota só é declarada ausente quando a leitura está segura.</b>${qualityWarnings ? `<br><span class="validation-warning">⚠ ${escapeHtml(qualityWarnings)}.</span>` : ''}${reviewCount ? `<br><span class="validation-review">${reviewCount} caso(s) foram enviados para revisão de leitura em vez de serem classificados incorretamente como ausentes.</span>` : ''}`;
+  const scope = pdfState.scopeInfo;
+  const scopeNote = scope?.excludedRows?.length ? `<br><span class="validation-review">ℹ ${scope.excludedRows.length} documento(s) do Domínio, totalizando ${money.format(scope.excludedTotal || 0)}, foram separados como outra espécie e não foram tratados como NF-e extra. Espécie comparável identificada: ${escapeHtml(scope.comparableSpecies)}.</span>` : '';
+  $('#pdfValidationPanel').innerHTML = `<strong>Regra segura da conciliação:</strong> a SEFAZ é a base oficial. O Conferinho soma desdobramentos do Domínio, procura a NF por número, fornecedor/documento e valor e faz uma segunda busca no texto bruto do PDF. <b>Uma nota só é declarada ausente quando a leitura está segura.</b>${scopeNote}${qualityWarnings ? `<br><span class="validation-warning">⚠ ${escapeHtml(qualityWarnings)}.</span>` : ''}${reviewCount ? `<br><span class="validation-review">${reviewCount} caso(s) foram enviados para revisão de leitura em vez de serem classificados incorretamente como ausentes.</span>` : ''}`;
   pdfState.filter = pendingCount ? 'pending' : 'all';
   pdfState.search = '';
   $('#pdfSearchInput').value = '';
@@ -1648,7 +1730,7 @@ function generatePdfFinalReport() {
 }
 
 function resetPdf() {
-  pdfState.filesA=[];pdfState.filesB=[];pdfState.records=[];pdfState.filter='all';pdfState.search='';pdfState.metrics=null;pdfState.sourceDocs={A:[],B:[]};pdfState.extractionQuality=null;pdfState.labels={A:'SEFAZ',B:'Domínio'};pdfState.reportMeta={company:'',document:'',period:'',responsible:safeStorageGet('conferinhoReportResponsible'),generalNote:'',reportDate:'',includeCorrect:true,runAt:null};
+  pdfState.filesA=[];pdfState.filesB=[];pdfState.records=[];pdfState.filter='all';pdfState.search='';pdfState.metrics=null;pdfState.sourceDocs={A:[],B:[]};pdfState.extractionQuality=null;pdfState.scopeInfo=null;pdfState.labels={A:'SEFAZ',B:'Domínio'};pdfState.reportMeta={company:'',document:'',period:'',responsible:safeStorageGet('conferinhoReportResponsible'),generalNote:'',reportDate:'',includeCorrect:true,runAt:null};
   $('#reportAInput').value='';$('#reportBInput').value='';$('#reportAFileList').innerHTML='';$('#reportBFileList').innerHTML='';$('#reportALabel').value='SEFAZ';$('#reportBLabel').value='Domínio';$('#pdfSearchInput').value='';$('#pdfResults').classList.add('hidden');$('#pdfProgress').classList.add('hidden');$('#compareBtn').disabled=true;$('#pdfStatusHint').textContent='Envie a base oficial da SEFAZ e o relatório de entradas do Domínio.';showToast('Conciliação de entradas limpa.');
 }
 

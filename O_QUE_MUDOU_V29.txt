@@ -1,0 +1,25 @@
+CONFERINHO V29 — LEITURA POR ESPÉCIE E VALOR CONTÁBIL
+
+Correções feitas após validar os relatórios reais de Diego Q. França:
+
+1. O leitor do Domínio agora identifica o valor contábil pela posição correta, depois da UF.
+   Antes, códigos pontuados de fornecedor como 36.901.555 podiam ser confundidos com dinheiro.
+
+2. O sistema passou a identificar a espécie do documento no relatório padrão do Domínio.
+
+3. Ao comparar um relatório de NF-e da SEFAZ, o Conferinho descobre qual espécie do Domínio corresponde à base oficial e separa documentos de outras espécies.
+
+4. Documentos fora do escopo não aparecem mais como lançamentos extras no Domínio.
+   Eles são apenas informados em um aviso separado, com quantidade e valor total.
+
+5. Validações adicionadas:
+   - quantidade declarada no relatório SEFAZ (ex.: Visualizando 1 - 13 de 13);
+   - total geral do relatório Domínio, mesmo quando aparece na linha seguinte;
+   - conferência do total extraído contra o total do próprio relatório.
+
+Resultado esperado com os dois arquivos usados no teste:
+- SEFAZ: 13 NF-e, total R$ 12.277,21;
+- Domínio comparável (espécie 36): 13 NF-e, total R$ 12.277,21;
+- 13 de 13 notas corretas;
+- 10 documentos da espécie 41, total R$ 32.590,36, separados como fora do escopo da base NF-e;
+- nenhuma ausência e nenhuma divergência de valor.
