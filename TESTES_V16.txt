@@ -1,0 +1,13 @@
+TESTES REALIZADOS NA V16
+
+1. Validação de sintaxe do JavaScript com Node.js.
+2. Verificação do carregamento dos novos estilos responsivos.
+3. Simulação das regras de resumo com:
+   - pagamentos do mesmo pagador;
+   - pagamentos de pagadores diferentes;
+   - CPF/CNPJ divergente;
+   - valor total exato;
+   - valor parcial ou superior;
+   - nota citada e não citada na planilha.
+4. Verificação de responsividade para desktop, tablet e celular.
+5. Conferência de que a planilha original continua sem alterações.

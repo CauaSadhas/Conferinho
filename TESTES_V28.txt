@@ -1,0 +1,8 @@
+TESTES REALIZADOS — V28
+
+- Sintaxe JavaScript validada com node --check.
+- Verificação da estrutura dos arquivos do projeto.
+- Regra de segunda busca no texto bruto adicionada.
+- Regra de bloqueio de falsa ausência adicionada.
+- Resgate por documento/fornecedor e valor adicionado.
+- Status “Revisar leitura antes de concluir” integrado aos cartões, métricas e relatório.

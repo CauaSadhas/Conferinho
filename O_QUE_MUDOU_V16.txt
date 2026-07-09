@@ -1,0 +1,27 @@
+CONFERINHO V16 — RESUMO INTELIGENTE DOS PAGAMENTOS
+
+Melhoria principal na Fila de Conciliação:
+
+- O bloco "Pagamentos relacionados" agora mostra o nome de quem pagou.
+- Identifica o pagador principal e o total pago por ele.
+- Agrupa pagamentos por CPF/CNPJ ou nome.
+- Mostra quantidade de pagamentos, quantidade de pagadores e intervalo de datas.
+- Mostra quantos pagamentos possuem o mesmo CPF/CNPJ do tomador.
+- Mostra quantos pagamentos citam diretamente o número da NFS-e.
+- Exibe as referências de notas encontradas na planilha.
+- Permite abrir a lista detalhada de todos os pagamentos relacionados.
+
+Novo resumo para tomada de decisão:
+
+- Valor total confere ou não.
+- CPF/CNPJ confere ou não.
+- Nome é compatível ou não.
+- Referência da nota foi encontrada ou não.
+- Informa se há mistura de pagadores.
+- Calcula uma confiança visual: Alta, Média ou Baixa.
+- Gera uma leitura rápida do caso.
+- Mostra alertas objetivos antes de confirmar a conciliação.
+
+A mesma leitura detalhada também aparece na tela "Consultar vínculo".
+
+Os módulos antigos do Conferinho foram mantidos.

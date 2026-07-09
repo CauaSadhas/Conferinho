@@ -1,0 +1,36 @@
+CONFERINHO V25 — CAIXA INTELIGENTE
+
+1. Fluxo principal reduzido a três passos:
+   1) Caixa inteligente
+   2) Resolver pendências
+   3) Finalizar e baixar
+
+2. Nova Caixa inteligente com quatro grupos:
+   - Resolvido automaticamente
+   - Só precisa confirmar
+   - Precisa de uma decisão
+   - Acompanhar em outra competência
+
+3. Automação segura:
+   - identifica vínculos com documento igual, soma exata e sem disputa;
+   - apresenta uma prévia antes da confirmação;
+   - exige autorização do usuário.
+
+4. Qualidade dos arquivos:
+   - pagamentos sem CPF/CNPJ;
+   - pagamentos sem número de nota;
+   - possíveis duplicidades;
+   - lançamentos ignorados.
+
+5. Relatório Excel ampliado:
+   - nova aba “Acompanhar próxima competência”;
+   - saldos parciais;
+   - notas sem pagamento localizado;
+   - pagamentos classificados em outro período.
+
+6. Ferramentas avançadas preservadas:
+   - Resumo completo
+   - Revisão em lote
+   - Listas completas
+   - Mesa de vínculos
+   - Pesquisa

@@ -1,0 +1,13 @@
+TESTES REALIZADOS — V18
+
+- Validação de sintaxe de conciliador.js: OK
+- Validação de sintaxe de app.js: OK
+- Validação de IDs duplicados no HTML: OK
+- Validação dos novos controles de leitura: OK
+- Validação do guia contextual: OK
+- Validação das áreas expansíveis: OK
+- Validação de referências dos elementos usados pelo JavaScript: OK
+- Estrutura do projeto para Vercel preservada: OK
+
+OBSERVAÇÃO
+O navegador de testes do ambiente bloqueou a abertura de URLs locais, portanto a validação visual automática por captura não pôde ser executada aqui. A estrutura HTML, CSS e JavaScript foi validada estaticamente e a lógica anterior da V17 foi preservada.

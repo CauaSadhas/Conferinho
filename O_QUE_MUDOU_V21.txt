@@ -1,0 +1,9 @@
+CONFERINHO V21 — MESA DE VÍNCULOS SEM PAINEL PRESO
+
+1. O painel “Conferência do vínculo” não fica mais grudado na parte inferior da tela.
+2. Ele passa a aparecer naturalmente abaixo das duas listas, sem cobrir notas ou pagamentos.
+3. Quando nenhum pagamento está selecionado, o painel fica compacto e esconde campos desnecessários.
+4. Ao selecionar pagamentos, o botão no topo passa a mostrar “X selecionados · conferir ↓”.
+5. Esse botão leva suavemente até o resumo da seleção.
+6. A soma, os pagadores, os documentos, a diferença e a confirmação continuam iguais.
+7. O layout permanece responsivo para notebook e celular.

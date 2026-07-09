@@ -1,0 +1,24 @@
+TESTES REALIZADOS — CONFERINHO V17
+
+1. Validação de sintaxe do conciliador.js com Node.js.
+2. Validação de sintaxe do app.js com Node.js.
+3. Verificação de IDs duplicados no HTML.
+4. Verificação de todos os novos elementos do painel de progresso.
+5. Renderização do projeto em navegador Chromium com dados simulados.
+6. Teste do percentual geral da conciliação.
+7. Teste do contador de pendências.
+8. Teste do contador de casos resolvidos pelo usuário.
+9. Teste da meta da sessão.
+10. Teste da navegação para a próxima etapa recomendada.
+11. Teste da fila de conciliação.
+12. Teste dos atalhos de decisão.
+13. Teste de desbloqueio do botão Salvar e continuar.
+14. Teste de redução da fila após uma decisão.
+15. Teste de atualização da barra de progresso.
+16. Teste do marco visual de 25%.
+17. Teste de manutenção do caso quando marcado como Revisar depois.
+18. Teste do modo foco.
+19. Teste de compatibilidade visual em largura desktop.
+20. Validação de que os arquivos antigos do Conferinho permanecem no pacote.
+
+Resultado: nenhum erro de JavaScript encontrado nos testes executados.

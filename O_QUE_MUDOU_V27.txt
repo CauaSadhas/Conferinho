@@ -1,0 +1,20 @@
+CONFERINHO V27 — TELA INICIAL
+
+Nova tela inicial do sistema:
+- Boas-vindas com a identidade do Conferinho.
+- Escolha visual entre os quatro módulos.
+- Cada cartão explica o objetivo, os arquivos necessários e o resultado esperado.
+- Passo a passo simples: escolher, enviar, resolver e baixar.
+- Destaque para privacidade, decisões explicadas e Jeito Conferinho.
+
+Navegação:
+- O sistema agora abre sempre na tela inicial quando não há módulo informado na URL.
+- O botão “Início” volta para a tela principal.
+- Links diretos continuam funcionando:
+  index.html?module=pdf
+  index.html?module=nfse
+  index.html?module=sum
+- O módulo de Conciliação de Recebimentos continua em conciliador.html.
+- O logotipo e o link lateral do conciliador retornam para a nova tela inicial.
+
+Os módulos anteriores e a lógica da V26 foram preservados.

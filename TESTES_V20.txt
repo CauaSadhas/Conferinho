@@ -1,0 +1,11 @@
+TESTES REALIZADOS — V20
+
+- Sintaxe do conciliador.js validada com Node.js.
+- IDs da nova Mesa de vínculos conferidos no HTML.
+- Nenhum ID duplicado no conciliador.html.
+- Referências estáticas de elementos do JavaScript conferidas contra o HTML.
+- Estrutura do projeto mantida compatível com deploy estático da Vercel.
+- Arquivos dos módulos anteriores preservados.
+- Validação das regras de seleção, soma, diferença e bloqueio de pagamentos já usados revisada no código.
+
+Observação: a leitura dos arquivos continua ocorrendo no navegador, como nas versões anteriores.

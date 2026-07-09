@@ -1,8 +1,16 @@
-1. Extraia o ZIP.
-2. Na raiz do repositório do Conferinho, substitua:
-   - index.html
-   - styles.css
-   - app.js
-3. Não apague a pasta assets.
-4. Faça o Commit changes.
-5. Aguarde a publicação da Vercel e atualize o navegador com Ctrl + F5.
+COMO ATUALIZAR O CONFERINHO V25 NO GITHUB / VERCEL
+
+1. Faça backup do repositório atual.
+2. Abra a pasta conferinho_v25 deste ZIP.
+3. Envie TODOS os arquivos de dentro dela para a raiz do repositório.
+4. Confirme a substituição dos arquivos existentes.
+5. Faça o commit no GitHub.
+6. Aguarde a Vercel mostrar READY.
+7. Abra o site e pressione Ctrl + F5.
+
+Arquivos principais alterados:
+- conciliador.html
+- conciliador.css
+- conciliador.js
+
+Os módulos de Entradas, NFS-e e Somador foram preservados.

@@ -1,0 +1,10 @@
+TESTES REALIZADOS — V19
+
+[OK] Sintaxe JavaScript validada com node --check.
+[OK] Histórico de nota usa o resumo completo dos pagadores.
+[OK] Diagnóstico de pagamento mostra identidade, documento, data, nota informada e origem.
+[OK] Consulta de pagamento usa a mesma visão completa.
+[OK] Fila de pagamento sem nota apresenta todas as informações importadas e possíveis NFS-e.
+[OK] Possibilidades mostram os pagadores e a recomendação de decisão.
+[OK] Layout responsivo para notebook e telas menores.
+[OK] Nenhuma alteração é feita no Excel original.

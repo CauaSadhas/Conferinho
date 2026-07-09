@@ -1,0 +1,29 @@
+CONFERINHO V22 — CONCLUSÕES QUE ELIMINAM PENDÊNCIAS
+
+A Mesa de Vínculos agora permite concluir cada caso de quatro formas claras:
+
+1. VÍNCULO COMPLETO
+   Use quando os pagamentos selecionados fecham exatamente o saldo da NFS-e.
+   A nota e os pagamentos saem das pendências.
+
+2. PAGAMENTO PARCIAL CONFIRMADO
+   Use quando os pagamentos realmente pertencem à nota, mas não quitam o valor total.
+   O vínculo é registrado, o saldo permanece no relatório para acompanhamento e o caso deixa a fila humana.
+
+3. PAGAMENTO DE OUTRA COMPETÊNCIA
+   Use quando o recebimento pertence a uma NFS-e de outro período.
+   O pagamento não é vinculado à nota selecionada e deixa de aparecer como pendência desta conferência.
+
+4. NOTA EMITIDA — PAGAMENTO NÃO LOCALIZADO
+   Use quando a NFS-e foi emitida, mas nenhum pagamento foi encontrado nesta competência.
+   A nota deixa a fila humana, mas o saldo continua registrado no relatório.
+
+OUTRAS MELHORIAS
+- Cada opção explica o que acontecerá antes da confirmação.
+- O botão de registro muda conforme a conclusão escolhida.
+- Opções incompatíveis ficam bloqueadas automaticamente.
+- A fila individual recebeu conclusões diferentes para notas e pagamentos.
+- A Central de Triagem recebeu os novos nomes claros.
+- O relatório Excel agora mostra a conclusão e o comentário do usuário em cada nota e pagamento.
+- Pagamentos de outra competência e notas sem pagamento localizado permanecem auditáveis sem voltar para a fila.
+- A barra de progresso avança quando a conclusão é definitiva.

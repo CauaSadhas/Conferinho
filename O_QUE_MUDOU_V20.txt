@@ -1,0 +1,31 @@
+CONFERINHO V20 — MESA DE VÍNCULOS
+
+A V20 transforma o antigo Montador de vínculo em uma área visual de trabalho.
+
+PRINCIPAL NOVIDADE
+- Notas da prefeitura aparecem em uma lista à esquerda.
+- Possíveis recebimentos aparecem em uma lista à direita.
+- Ao escolher a nota, os pagamentos são ordenados por compatibilidade.
+- Cada pagamento mostra nome do pagador, CPF/CNPJ, valor, data, ID, nota informada e origem.
+- O usuário pode marcar vários pagamentos e acompanhar a soma em tempo real.
+
+TOMADA DE DECISÃO
+- Saldo da nota.
+- Total dos pagamentos selecionados.
+- Diferença final.
+- Indicação visual de valor exato, falta ou excesso.
+- Resumo dos pagadores e valores por pessoa/empresa.
+- Alerta de documentos divergentes.
+- Alerta de vários pagadores na mesma seleção.
+- Indicação de quantos pagamentos citam a NFS-e no Excel.
+
+AUTOMAÇÃO
+- Botão para selecionar automaticamente uma combinação que fecha exatamente o saldo.
+- Pesquisa de notas.
+- Ordenação por impacto, data, número ou cliente.
+- Pesquisa de pagamentos.
+- Filtro para priorizar pagamentos compatíveis.
+- Proteção contra reutilizar pagamento já vinculado.
+- Aviso antes de confirmar vínculo com diferença ou mistura de pagadores.
+
+O objetivo é permitir a conciliação sem voltar à planilha e sem alternar entre várias telas.

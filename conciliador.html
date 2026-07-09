@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Conferinho — conciliação de recebimentos com Caixa inteligente, fluxo em três passos, decisões guiadas e relatório final completo." />
+  <title>Conferinho — Conciliação de Recebimentos</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="conciliador.css" />
+</head>
+<body class="conciliador-body">
+  <header class="topbar conciliador-topbar">
+    <a class="brand-wrap" href="index.html" aria-label="Conferinho — início">
+      <span class="brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 64 64"><path d="M13 5h38a8 8 0 0 1 8 8v29a8 8 0 0 1-8 8H30L18 59v-9h-5a8 8 0 0 1-8-8V13a8 8 0 0 1 8-8Z" fill="currentColor"/><path d="m18 28 9 9 20-21" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"/></svg>
+      </span>
+      <span><span class="brand">Conferinho</span><span class="brand-subtitle">Compara. Confere. Dá certo.</span></span>
+    </a>
+    <nav class="module-nav" aria-label="Módulos do Conferinho">
+      <a class="module-link-button module-home-link" href="index.html"><span>⌂</span> Início</a>
+      <a class="module-link-button" href="index.html?module=pdf"><span>NF-e</span> Conciliação de Entradas</a>
+      <a class="module-link-button" href="index.html?module=nfse"><span>XML</span> Analisador NFS-e</a>
+      <a class="module-link-button" href="index.html?module=sum"><span>Σ</span> Somador de NFs</a>
+      <a class="module-link-button active" href="conciliador.html"><span>R$</span> Conciliação de Recebimentos</a>
+    </nav>
+    <button class="button button-ghost" id="receiptsGlobalResetBtn" type="button">Nova conciliação</button>
+  </header>
+
+  <main class="conc-app-shell">
+    <aside class="conc-sidebar" aria-label="Etapas da conciliação">
+      <div class="conc-brand-card">
+        <span class="conc-brand-badge">🧡 Jeito Conferinho</span>
+        <div class="conc-brand-title"><span class="conc-mini-robot">🤖</span><strong>Conferinho</strong></div>
+        <p>Central de Conciliação clara, acolhedora e objetiva. O sistema mostra o que aconteceu e ajuda você a decidir.</p>
+      </div>
+
+      <section class="conc-reading-panel" aria-label="Preferências de leitura">
+        <div class="conc-reading-heading"><span>👀</span><div><strong>Leitura confortável</strong><small>Deixe a tela do seu jeito</small></div></div>
+        <div class="conc-reading-buttons" role="group" aria-label="Tamanho do texto">
+          <button type="button" data-reading-size="comfortable" class="active">Confortável</button>
+          <button type="button" data-reading-size="large">Texto maior</button>
+        </div>
+        <label class="conc-calm-toggle"><input id="calmModeToggle" type="checkbox" checked /> <span><strong>Modo tranquilo</strong><small>Mostra primeiro o essencial</small></span></label>
+      </section>
+
+      <div class="conc-sidebar-section">
+        <span class="conc-sidebar-label">3 PASSOS PARA TERMINAR</span>
+        <button class="conc-nav-button active conc-nav-primary" type="button" data-conc-page="assistant"><span>📥</span><div><strong>1. Caixa inteligente</strong><small>O sistema organiza tudo</small></div><b id="sideAssistantBadge">0</b></button>
+        <button class="conc-nav-button" type="button" data-conc-page="queue"><span>🎯</span><div><strong>2. Resolver pendências</strong><small>Um caso de cada vez</small></div><b id="sideQueueBadge">0</b></button>
+        <button class="conc-nav-button" type="button" data-conc-page="finish"><span>✅</span><div><strong>3. Finalizar e baixar</strong><small>Excel e auditoria</small></div><b id="sideFinishBadge">0%</b></button>
+
+        <details class="conc-advanced-menu">
+          <summary>Ferramentas de apoio</summary>
+          <div class="conc-advanced-menu-body">
+            <button class="conc-nav-button" type="button" data-conc-page="dashboard"><span>🏠</span><div><strong>Resumo completo</strong><small>Visão geral e progresso</small></div></button>
+            <button class="conc-nav-button" type="button" data-conc-page="quick"><span>⚡</span><div><strong>Revisão em lote</strong><small>Confirmar sugestões fortes</small></div><b id="sideQuickBadge">0</b></button>
+            <button class="conc-nav-button" type="button" data-conc-page="triage"><span>🧭</span><div><strong>Listas completas</strong><small>Filtrar e decidir em lote</small></div><b id="sideTriageBadge">0</b></button>
+            <button class="conc-nav-button" type="button" data-conc-page="builder"><span>🧩</span><div><strong>Mesa de vínculos</strong><small>Montar nota ↔ pagamentos</small></div></button>
+            <button class="conc-nav-button" type="button" data-conc-page="consult"><span>🔎</span><div><strong>Pesquisar</strong><small>Nota, pagamento ou cliente</small></div></button>
+          </div>
+        </details>
+      </div>
+
+      <div class="conc-sidebar-footer">
+        <div class="conc-autosave"><i></i><div><strong id="autosaveStatusText">Tudo salvo automaticamente</strong><small>Você pode fechar e continuar depois neste navegador.</small></div></div>
+        <button id="guidedHelpBtn" class="conc-help-button" type="button">? Como usar este módulo</button>
+        <div class="conc-safety"><span>🔒</span><div><strong>Arquivos protegidos</strong><small>O processamento acontece no navegador. A planilha original não é alterada.</small></div></div>
+        <a href="index.html" class="conc-back-link">← Voltar à tela inicial</a>
+      </div>
+    </aside>
+
+    <div class="conc-main">
+      <section class="conc-hero">
+        <div>
+          <span class="eyebrow"><span class="eyebrow-dot"></span> CONCILIAÇÃO DE RECEBIMENTOS</span>
+          <h1>Descubra <span>qual pagamento pertence a qual nota</span> — e por quê.</h1>
+          <p>Compare o Excel financeiro com as NFS-e da prefeitura. O Conferinho organiza as pendências, sugere vínculos e registra cada decisão.</p>
+        </div>
+        <div class="conc-hero-mascot">
+          <img src="assets/mascote-conferinho.svg" alt="Mascote Conferinho" />
+          <div><strong>Eu explico cada vínculo.</strong><small>Você decide com segurança.</small></div>
+        </div>
+      </section>
+
+      <section id="concUploadPage" class="conc-upload-page">
+        <div class="conc-welcome panel">
+          <div><span class="panel-kicker">COMECE POR AQUI</span><h2>Envie os dois arquivos do mesmo período</h2><p>Primeiro o Conferinho lê e organiza. Depois você trabalha no mesmo fluxo do conciliador antigo: painel, revisão rápida, triagem, montagem de vínculos e relatório final.</p></div>
+          <div class="conc-welcome-steps"><span><b>1</b> Excel</span><i>→</i><span><b>2</b> PDF</span><i>→</i><span><b>3</b> Conciliar</span></div>
+        </div>
+
+        <section class="upload-grid entry-upload-grid conc-upload-grid">
+          <article class="panel upload-panel source-panel source-panel-sefaz">
+            <div class="source-ribbon">RECEBIMENTOS</div>
+            <div class="panel-heading"><div class="step-number">1</div><div><span class="panel-kicker">PLANILHA FINANCEIRA</span><h2>Excel de recebimentos</h2><p>Lançamentos recebidos no período.</p></div><span class="multi-badge">XLSX ou XLS</span></div>
+            <div class="source-guide"><div><span>Colunas esperadas</span><strong>CNPJ/CPF · Nota Fiscal · Recebido</strong></div><div><span>O sistema também usa</span><strong>Cliente · Data · Origem</strong></div></div>
+            <label class="dropzone" id="receiptsExcelDropzone" for="receiptsExcelInput"><input id="receiptsExcelInput" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" /><span class="drop-icon">XLS</span><strong>Solte aqui a planilha de recebimentos</strong><span>ou clique para selecionar o Excel</span><em>Transferências internas serão ignoradas automaticamente</em></label>
+            <div class="file-list" id="receiptsExcelFileList"></div>
+          </article>
+
+          <div class="compare-bridge receipts-bridge" aria-hidden="true"><span></span><b>↔</b><span></span></div>
+
+          <article class="panel upload-panel source-panel receipts-pdf-panel">
+            <div class="source-ribbon source-ribbon-dominio">NOTAS EMITIDAS</div>
+            <div class="panel-heading"><div class="step-number warm">2</div><div><span class="panel-kicker">PREFEITURA</span><h2>Relatório de NFS-e</h2><p>Relação de notas fiscais emitidas.</p></div><span class="multi-badge warm">PDF</span></div>
+            <div class="source-guide source-guide-dominio"><div><span>Relatório recomendado</span><strong>Relação de Notas Fiscais de Serviços Eletrônicas</strong></div><div><span>O sistema procura</span><strong>NFS-e · Tomador · CPF/CNPJ · Valor</strong></div></div>
+            <label class="dropzone warm" id="receiptsPdfDropzone" for="receiptsPdfInput"><input id="receiptsPdfInput" type="file" accept="application/pdf,.pdf" /><span class="drop-icon warm">PDF</span><strong>Solte aqui o relatório da prefeitura</strong><span>ou clique para selecionar o PDF</span><em>O PDF precisa possuir texto pesquisável</em></label>
+            <div class="file-list" id="receiptsPdfFileList"></div>
+          </article>
+        </section>
+
+        <section class="panel action-panel receipts-action-panel">
+          <div><span class="panel-kicker">PRONTO PARA CONCILIAR</span><h2>Analisar e abrir o painel de comando</h2><p id="receiptsStatusHint">Envie o Excel e o PDF para iniciar.</p></div>
+          <div class="receipts-action-options"><label><input id="receiptsIncludeCredits" type="checkbox" /> Incluir lançamentos de crédito</label><button class="button button-primary button-large" id="receiptsAnalyzeBtn" type="button" disabled>✓ Iniciar conciliação</button></div>
+        </section>
+      </section>
+
+      <section id="receiptsProgress" class="panel progress-panel hidden" aria-live="polite"><div class="progress-avatar">🤖</div><div class="progress-content"><div class="progress-head"><strong id="receiptsProgressTitle">Lendo os arquivos...</strong><span id="receiptsProgressPercent">0%</span></div><div class="progress-track"><div id="receiptsProgressBar" class="progress-bar"></div></div><p id="receiptsProgressDetail">Preparando a análise</p></div></section>
+
+      <section id="receiptsResults" class="conc-results hidden">
+        <section id="concPageGuide" class="conc-page-guide" aria-live="polite">
+          <span id="concPageGuideIcon">🧭</span>
+          <div><strong id="concPageGuideTitle">Olhe primeiro o essencial</strong><p id="concPageGuideText">O Conferinho vai indicar o próximo passo sem obrigar você a analisar tudo de uma vez.</p></div>
+        </section>
+        <section id="conciliationProgressHub" class="panel conc-progress-hub" aria-live="polite">
+          <div class="conc-progress-ring-wrap">
+            <div class="conc-progress-ring" id="conciliationProgressRing"><strong id="conciliationProgressPercent">0%</strong><span>concluído</span></div>
+          </div>
+          <div class="conc-progress-main">
+            <div class="conc-progress-headline">
+              <div><span class="panel-kicker">SEU PROGRESSO</span><h3 id="conciliationProgressTitle">A conciliação está pronta para começar.</h3><p id="conciliationProgressText">O Conferinho vai mostrar quanto já foi resolvido e qual é o próximo melhor passo.</p></div>
+              <button class="button button-primary" id="conciliationContinueBtn" type="button">Continuar de onde parei</button>
+            </div>
+            <div class="conc-progress-track"><i id="conciliationProgressBar"></i></div>
+            <div class="conc-progress-stats">
+              <div><span>Resolvido automaticamente</span><strong id="progressAutomaticCount">0</strong></div>
+              <div><span>Resolvido por você</span><strong id="progressHumanCount">0</strong></div>
+              <div><span>Faltam analisar</span><strong id="progressRemainingCount">0</strong></div>
+              <div><span>Maior valor em aberto</span><strong id="progressRemainingValue">R$ 0,00</strong></div>
+            </div>
+            <details class="conc-progress-details">
+              <summary>Ver as 4 etapas da conciliação</summary>
+              <div class="conc-progress-journey" id="conciliationJourneySteps">
+                <button type="button" data-journey-page="quick"><b>1</b><span><strong>Ganhos rápidos</strong><small id="journeyQuickText">0 possibilidades fortes</small></span></button>
+                <i>→</i>
+                <button type="button" data-journey-page="triage"><b>2</b><span><strong>Triagem em lote</strong><small id="journeyTriageText">0 pendências</small></span></button>
+                <i>→</i>
+                <button type="button" data-journey-page="queue"><b>3</b><span><strong>Casos difíceis</strong><small id="journeyQueueText">0 para investigar</small></span></button>
+                <i>→</i>
+                <button type="button" data-journey-page="finish"><b>4</b><span><strong>Fechamento</strong><small id="journeyFinishText">Relatório final</small></span></button>
+              </div>
+            </details>
+          </div>
+          <aside class="conc-session-goal">
+            <span class="panel-kicker">META DESTA SESSÃO</span>
+            <strong><b id="sessionSolvedCount">0</b>/<span id="sessionGoalCount">10</span></strong>
+            <small>casos resolvidos agora</small>
+            <div class="conc-session-goal-track"><i id="sessionGoalBar"></i></div>
+            <select id="sessionGoalSelect" aria-label="Meta de casos da sessão"><option value="5">5 casos</option><option value="10" selected>10 casos</option><option value="20">20 casos</option><option value="50">50 casos</option></select>
+          </aside>
+        </section>
+        <section class="conc-page active" data-conc-section="assistant">
+          <div class="conc-page-head conc-guided-head"><div><span class="panel-kicker">CAIXA INTELIGENTE</span><h2>O Conferinho já separou o que está resolvido do que realmente precisa de você</h2><p>Comece pelo cartão laranja. O restante fica guardado e organizado para você não se perder.</p></div><div class="conc-guided-time"><span>Tempo estimado</span><strong id="guidedEstimatedTime">—</strong><small>para tratar o que falta</small></div></div>
+
+          <section class="conc-three-step-strip" aria-label="Etapas da conciliação">
+            <div class="done"><b>1</b><span><strong>Arquivos analisados</strong><small>Excel e PDF organizados</small></span></div>
+            <i>→</i>
+            <div class="current"><b>2</b><span><strong>Resolver pendências</strong><small>Você está aqui</small></span></div>
+            <i>→</i>
+            <div><b>3</b><span><strong>Finalizar</strong><small>Relatório e auditoria</small></span></div>
+          </section>
+
+          <section class="conc-smart-inbox-grid">
+            <article class="panel conc-smart-card success">
+              <span class="conc-smart-icon">✓</span><div><small>RESOLVIDO AUTOMATICAMENTE</small><strong id="smartAutomaticCount">0</strong><p>Notas que já fecharam sem exigir ação humana.</p><em id="smartAutomaticValue">R$ 0,00</em></div>
+            </article>
+            <button type="button" class="panel conc-smart-card warm" data-smart-action="confirm">
+              <span class="conc-smart-icon">⚡</span><div><small>SÓ PRECISA CONFIRMAR</small><strong id="smartConfirmCount">0</strong><p>Sugestões fortes, com evidências visíveis e revisão rápida.</p><em id="smartConfirmValue">R$ 0,00</em></div><b>Abrir →</b>
+            </button>
+            <button type="button" class="panel conc-smart-card danger" data-smart-action="decide">
+              <span class="conc-smart-icon">!</span><div><small>PRECISA DE UMA DECISÃO</small><strong id="smartDecisionCount">0</strong><p>Pagamentos parciais, notas sem pagamento e casos divergentes.</p><em id="smartDecisionValue">R$ 0,00</em></div><b>Resolver →</b>
+            </button>
+            <button type="button" class="panel conc-smart-card blue" data-smart-action="follow">
+              <span class="conc-smart-icon">↪</span><div><small>ACOMPANHAR EM OUTRA COMPETÊNCIA</small><strong id="smartFollowCount">0</strong><p>Casos já classificados, mas que ainda possuem saldo ou acompanhamento futuro.</p><em id="smartFollowValue">R$ 0,00</em></div><b>Ver →</b>
+            </button>
+          </section>
+
+          <section id="smartSafePanel" class="panel conc-smart-safe-panel">
+            <div class="conc-smart-safe-copy"><span class="panel-kicker">AUTOMAÇÃO COM SEGURANÇA</span><h3><span id="smartSafeCount">0</span> vínculo(s) passaram em todos os testes</h3><p id="smartSafeExplanation">Mesmo CPF/CNPJ, soma exata, sem disputa com outra nota e evidências suficientes.</p><div id="smartSafePreview" class="conc-smart-safe-preview"></div></div>
+            <button class="button button-primary button-large" id="smartSafeConfirmBtn" type="button">Revisar e confirmar seguros</button>
+          </section>
+
+          <section id="guidedNextAction" class="panel conc-guided-next">
+            <div class="conc-guided-next-icon" id="guidedNextIcon">✨</div>
+            <div class="conc-guided-next-copy"><span class="panel-kicker">PRÓXIMO PASSO RECOMENDADO</span><h3 id="guidedNextTitle">Preparando seu roteiro...</h3><p id="guidedNextText">O Conferinho vai indicar a tarefa que reduz mais pendências com menos esforço.</p><div id="guidedNextReason" class="conc-guided-reason"></div></div>
+            <button class="button button-primary button-large" id="guidedContinueBtn" type="button">Começar agora</button>
+          </section>
+
+          <div class="conc-guided-progress-line"><div><span>Seu progresso humano</span><strong id="guidedProgressText">0 de 0 pendências tratadas</strong></div><div class="conc-guided-track"><i id="guidedProgressBar"></i></div></div>
+
+          <details class="conc-smart-details">
+            <summary>Ver o roteiro completo e todas as categorias</summary>
+            <section class="conc-guided-buckets" id="guidedBuckets">
+              <button type="button" class="panel conc-guided-bucket" data-guided-bucket="strong"><span class="conc-guided-bucket-icon">⚡</span><div><small>ETAPA 1</small><strong>Confirmar sugestões seguras</strong><p>Vínculos com evidências fortes e revisão rápida.</p></div><em id="guidedStrongCount">0</em></button>
+              <button type="button" class="panel conc-guided-bucket" data-guided-bucket="partial"><span class="conc-guided-bucket-icon">◐</span><div><small>ETAPA 2</small><strong>Tratar pagamentos parciais</strong><p>Confirme o que entrou e preserve o saldo faltante.</p></div><em id="guidedPartialCount">0</em></button>
+              <button type="button" class="panel conc-guided-bucket" data-guided-bucket="notes"><span class="conc-guided-bucket-icon">⌕</span><div><small>ETAPA 3</small><strong>Notas sem pagamento</strong><p>Localize recebimentos ou registre que não foram encontrados.</p></div><em id="guidedNotesCount">0</em></button>
+              <button type="button" class="panel conc-guided-bucket" data-guided-bucket="payments"><span class="conc-guided-bucket-icon">R$</span><div><small>ETAPA 4</small><strong>Pagamentos sem nota</strong><p>Encontre a NFS-e ou classifique a competência correta.</p></div><em id="guidedPaymentsCount">0</em></button>
+              <button type="button" class="panel conc-guided-bucket" data-guided-bucket="complex"><span class="conc-guided-bucket-icon">🧠</span><div><small>POR ÚLTIMO</small><strong>Casos realmente difíceis</strong><p>Somente divergências que exigem atenção individual.</p></div><em id="guidedComplexCount">0</em></button>
+            </section>
+          </details>
+
+          <section class="panel conc-data-quality" id="dataQualityPanel">
+            <div><span class="panel-kicker">QUALIDADE DOS ARQUIVOS</span><h3>O que pode reduzir a precisão da conciliação</h3><p>Esses alertas não impedem o trabalho, mas ajudam a entender por que alguns casos ficaram pendentes.</p></div>
+            <div id="dataQualityItems" class="conc-data-quality-grid"></div>
+          </section>
+        </section>
+
+        <section class="conc-page" data-conc-section="dashboard">
+          <div class="conc-page-head"><div><span class="panel-kicker">PAINEL DE COMANDO</span><h2>O que aconteceu nesta conciliação?</h2><p id="receiptsResultSubtitle"></p></div><div class="conc-head-actions"><button class="button button-ghost" id="receiptsUndoBtn" type="button" disabled>Desfazer última decisão</button><button class="button button-ghost" id="receiptsSessionBtn" type="button">Salvar sessão</button></div></div>
+
+          <div class="receipts-command-card panel"><div class="receipts-command-copy"><span class="panel-kicker">LEITURA RÁPIDA</span><h3 id="receiptsCommandTitle">O Conferinho está organizando o resultado.</h3><p id="receiptsCommandText"></p></div><button class="button button-primary" id="receiptsStartEasyBtn" type="button">Começar pelos casos mais fáceis</button></div>
+
+          <div class="summary-grid four receipts-summary-grid">
+            <button class="summary-card success active" data-receipts-view="clear" data-open-page="triage"><span>Já está claro</span><strong id="receiptsClearCount">0</strong><small id="receiptsClearValue">R$ 0,00</small></button>
+            <button class="summary-card warning" data-receipts-view="doubts" data-open-page="triage"><span>Dúvidas e divergências</span><strong id="receiptsDoubtCount">0</strong><small id="receiptsDoubtValue">R$ 0,00</small></button>
+            <button class="summary-card danger" data-receipts-view="notes" data-open-page="triage"><span>Notas sem pagamento completo</span><strong id="receiptsNoteOpenCount">0</strong><small id="receiptsNoteOpenValue">R$ 0,00</small></button>
+            <button class="summary-card purple" data-receipts-view="payments" data-open-page="triage"><span>Pagamentos sem nota</span><strong id="receiptsPaymentOpenCount">0</strong><small id="receiptsPaymentOpenValue">R$ 0,00</small></button>
+          </div>
+
+          <div class="conc-top-vision">
+            <section class="panel conc-top-panel"><div class="conc-section-title"><div><span class="panel-kicker">VISÃO DO TOPO</span><h3>O que ainda precisa de atenção</h3></div><button class="button button-ghost" type="button" data-open-page="triage">Abrir listas completas</button></div><div id="dashboardPendingPreview" class="conc-preview-list"></div></section>
+            <section class="panel conc-top-panel"><div class="conc-section-title"><div><span class="panel-kicker">MAIOR IMPACTO</span><h3>Comece pelo que movimenta mais valor</h3></div></div><div id="dashboardImpactPreview" class="conc-preview-list"></div></section>
+          </div>
+          <section class="panel conc-progress-activity">
+            <div class="conc-section-title"><div><span class="panel-kicker">SENSAÇÃO DE AVANÇO</span><h3>O que você já resolveu</h3><p id="dashboardProgressNarrative">Cada decisão registrada reduz a fila e fica guardada na trilha de auditoria.</p></div><button class="button button-ghost" type="button" data-open-page="finish">Ver decisões</button></div>
+            <div id="dashboardRecentDecisions" class="conc-recent-decisions"></div>
+          </section>
+
+          <details class="conc-secondary-details">
+            <summary>Ver todos os caminhos disponíveis no sistema</summary>
+            <div class="receipts-workflow-grid">
+              <article class="panel receipts-workflow-card"><span class="receipts-workflow-order">PRIMEIRO</span><h3>Eliminar vínculos fortes</h3><p>Confirme as possibilidades mais seguras em uma única tela.</p><button class="button button-ghost" type="button" data-open-page="quick">Abrir revisão rápida</button></article>
+              <article class="panel receipts-workflow-card"><span class="receipts-workflow-order warm">DEPOIS</span><h3>Ver todas as pendências</h3><p>Use listas para eliminar casos e tomar decisões em lote.</p><button class="button button-ghost" type="button" data-open-page="triage">Abrir Central de triagem</button></article>
+              <article class="panel receipts-workflow-card"><span class="receipts-workflow-order purple">QUANDO PRECISAR</span><h3>Usar a Mesa de vínculos</h3><p>Veja notas e pagamentos lado a lado, selecione e acompanhe a diferença.</p><button class="button button-ghost" type="button" data-open-page="builder">Abrir Mesa de vínculos</button></article>
+            </div>
+          </details>
+        </section>
+
+        <section class="conc-page" data-conc-section="quick">
+          <div class="conc-page-head"><div><span class="panel-kicker">REVISÃO RÁPIDA</span><h2>Elimine primeiro os vínculos mais fortes</h2><p>O Conferinho reuniu as possibilidades de maior confiança. Marque somente o que estiver claro e confirme em lote.</p></div><div class="conc-counter-card"><strong id="quickStrongCount">0</strong><span>possibilidades fortes</span></div></div>
+          <div class="panel conc-guidance"><span>💡</span><div><strong>Como conferir rapidamente</strong><p>Observe CPF/CNPJ, valor e motivo. Quando os três estiverem coerentes, o vínculo costuma ser seguro.</p></div></div>
+          <div id="quickReviewList" class="conc-quick-list"></div>
+          <div class="panel conc-sticky-action conc-quick-action"><div class="conc-quick-selects"><label><input type="checkbox" id="quickSelectAll" /> Selecionar todas as possibilidades visíveis</label><button class="button button-ghost" id="quickSelectSafeBtn" type="button">Selecionar somente 95% ou mais</button></div><input id="quickComment" placeholder="Comentário opcional para os vínculos confirmados" /><button class="button button-primary" id="quickConfirmBtn" type="button">Confirmar selecionados</button></div>
+        </section>
+
+        <section class="conc-page" data-conc-section="triage">
+          <div class="conc-page-head"><div><span class="panel-kicker">CENTRAL DE TRIAGEM</span><h2>Veja tudo de cima e resolva em lote</h2><p>Use as listas para eliminar casos claros. Abra os detalhes apenas quando realmente precisar.</p></div><div class="receipts-progress-pill"><strong id="receiptsProgressResolved">0</strong><span>decisões registradas</span></div></div>
+          <section class="panel receipts-triage-panel">
+            <div class="receipts-triage-head"><div><span class="panel-kicker">LISTA ATUAL</span><h3 id="receiptsTriageTitle">Vínculos claros</h3><p id="receiptsViewHelp">Mostrando os vínculos que já estão claros.</p></div></div>
+            <div class="receipts-view-tabs" role="tablist">
+              <button class="filter-tab active" data-receipts-view="clear">Claros</button>
+              <button class="filter-tab" data-receipts-view="doubts">Dúvidas</button>
+              <button class="filter-tab" data-receipts-view="notes">Notas sem pagamento</button>
+              <button class="filter-tab" data-receipts-view="payments">Pagamentos sem nota</button>
+              <button class="filter-tab" data-receipts-view="possibilities">Possibilidades</button>
+              <button class="filter-tab" data-receipts-view="decisions">Decisões</button>
+            </div>
+            <div class="receipts-toolbar"><label class="search-box receipts-search">⌕<input id="receiptsSearchInput" placeholder="Buscar nota, pagamento, cliente, CPF/CNPJ ou valor" /></label><label class="receipts-easy-toggle"><input id="receiptsEasyOnly" type="checkbox" /> Somente casos fáceis</label><label class="receipts-hide-toggle"><input id="receiptsHideResolved" type="checkbox" checked /> Ocultar já decididos</label></div>
+            <div class="receipts-bulk-bar" id="receiptsBulkBar"><label><input id="receiptsSelectAll" type="checkbox" /> Selecionar todos visíveis</label><select id="receiptsBulkDecision"><option value="confirmado">Confirmar como correto</option><option value="parcial_confirmado">Pagamento parcial confirmado — saldo em aberto</option><option value="corrigir_planilha">Corrigir referência ou cadastro na planilha</option><option value="pagamento_outra_competencia">Pagamento pertence a NFS-e de outra competência</option><option value="nota_pagamento_nao_localizado">Nota emitida — pagamento não localizado</option><option value="nao_receita">Lançamento não deve entrar como receita</option><option value="revisar">Revisar depois</option></select><input id="receiptsBulkComment" placeholder="Comentário opcional" /><button class="button button-primary" id="receiptsApplyBulkBtn" type="button">Aplicar aos selecionados</button></div>
+            <div class="receipts-list-head"><strong id="receiptsVisibleCount">0 itens</strong><span id="receiptsSelectedCount">0 selecionados</span></div>
+            <div id="receiptsTableWrap" class="receipts-table-wrap"></div>
+            <div id="receiptsEmpty" class="empty-results hidden"><div>✓</div><strong>Nenhum item nesta lista</strong><span>Altere os filtros ou avance para a próxima etapa.</span></div>
+          </section>
+          <section id="receiptsDetailPanel" class="panel receipts-detail-panel hidden"></section>
+        </section>
+
+        <section class="conc-page" data-conc-section="builder">
+          <div class="conc-page-head conc-linkdesk-head">
+            <div><span class="panel-kicker">MESA DE VÍNCULOS</span><h2>Monte a conciliação olhando nota e pagamentos lado a lado</h2><p>Selecione uma nota da prefeitura, marque os possíveis recebimentos e acompanhe a soma, a diferença e as evidências em tempo real.</p></div>
+            <div class="conc-linkdesk-legend"><span><i class="good"></i> Fecha o valor</span><span><i class="warn"></i> Precisa revisar</span><span><i class="bad"></i> Excede ou diverge</span></div>
+          </div>
+
+          <section class="conc-linkdesk-toolbar panel">
+            <div>
+              <label>Pesquisar nota da prefeitura<input id="builderInvoiceSearch" placeholder="Número, tomador, CPF/CNPJ ou valor" /></label>
+            </div>
+            <div>
+              <label>Ordenar notas<select id="builderInvoiceSort"><option value="impact">Maior saldo primeiro</option><option value="date">Data de emissão</option><option value="number">Número da NFS-e</option><option value="customer">Nome do tomador</option></select></label>
+            </div>
+            <div class="conc-linkdesk-toolbar-stat"><span id="builderInvoiceCount">0 notas</span><strong id="builderInvoiceTotal">R$ 0,00</strong><small>saldo pendente no filtro</small></div>
+          </section>
+
+          <div class="conc-linkdesk-grid">
+            <section class="panel conc-linkdesk-column conc-linkdesk-notes">
+              <div class="conc-linkdesk-column-head">
+                <div><span class="panel-kicker">1 · NOTAS DA PREFEITURA</span><h3>Escolha a nota que deseja fechar</h3><p>As notas com maior impacto aparecem primeiro.</p></div>
+              </div>
+              <select id="builderInvoiceSelect" class="hidden" aria-hidden="true" tabindex="-1"></select>
+              <div id="builderInvoicesList" class="conc-linkdesk-list"></div>
+            </section>
+
+            <section class="panel conc-linkdesk-column conc-linkdesk-payments">
+              <div class="conc-linkdesk-column-head">
+                <div><span class="panel-kicker">2 · POSSÍVEIS RECEBIMENTOS</span><h3>Marque os pagamentos que pertencem à nota</h3><p>Você vê quem pagou, CPF/CNPJ, data, referência e motivo da sugestão sem voltar ao Excel.</p></div>
+                <button id="builderSelectedCount" class="conc-pill conc-pill-action" type="button" disabled>0 selecionados</button>
+              </div>
+              <div id="builderInvoiceSummary" class="conc-linkdesk-selected-note"></div>
+              <div class="conc-linkdesk-payment-tools">
+                <label class="search-box">⌕<input id="builderSearchInput" placeholder="Pesquisar pagador, CPF/CNPJ, valor, data, nota ou ID" /></label>
+                <label class="conc-inline-check"><input id="builderSuggestedOnly" type="checkbox" checked /> Priorizar compatíveis</label>
+                <button class="button button-ghost" id="builderAutoFitBtn" type="button">✨ Selecionar combinação que fecha</button>
+                <button class="button button-ghost" id="builderClearSelectionBtn" type="button">Limpar seleção</button>
+              </div>
+              <div id="builderPaymentsList" class="conc-linkdesk-list conc-linkdesk-payment-list"></div>
+            </section>
+          </div>
+
+          <section id="builderResultPanel" class="panel conc-linkdesk-result is-empty">
+            <div class="conc-linkdesk-result-top">
+              <div><span class="panel-kicker">3 · CONFERÊNCIA DO VÍNCULO</span><h3 id="builderDecisionTitle">Selecione uma nota e os pagamentos</h3><p id="builderDecisionHint">O Conferinho mostrará se o valor fecha e quais pontos precisam de atenção.</p></div>
+              <span id="builderMatchStatus" class="conc-linkdesk-status neutral">Aguardando seleção</span>
+            </div>
+            <div id="builderEquation" class="conc-linkdesk-equation"></div>
+            <div id="builderSelectionSummary" class="conc-linkdesk-selection-summary"></div>
+
+            <section class="conc-builder-outcomes" aria-labelledby="builderOutcomeTitle">
+              <div class="conc-builder-outcomes-head">
+                <div><span class="panel-kicker">COMO DESEJA CONCLUIR ESTE CASO?</span><h4 id="builderOutcomeTitle">Escolha o resultado que representa o que aconteceu</h4><p>O Conferinho registra a conclusão, retira o caso da fila quando aplicável e mantém o saldo ou a pendência no relatório.</p></div>
+                <span id="builderOutcomeProgress" class="conc-outcome-progress">Escolha uma conclusão</span>
+              </div>
+              <div class="conc-builder-outcome-grid" id="builderOutcomeGrid">
+                <label class="conc-builder-outcome-card" data-outcome-card="complete">
+                  <input type="radio" name="builderOutcome" value="complete" />
+                  <span class="conc-outcome-icon">✓</span>
+                  <strong>Vínculo completo</strong>
+                  <small>Os pagamentos fecham o saldo da NFS-e. A nota e os pagamentos saem das pendências.</small>
+                </label>
+                <label class="conc-builder-outcome-card" data-outcome-card="partial">
+                  <input type="radio" name="builderOutcome" value="partial" />
+                  <span class="conc-outcome-icon">◐</span>
+                  <strong>Pagamento parcial confirmado</strong>
+                  <small>Vincula os pagamentos encontrados, mantém o saldo em aberto no relatório e encerra esta análise.</small>
+                </label>
+                <label class="conc-builder-outcome-card" data-outcome-card="other_period">
+                  <input type="radio" name="builderOutcome" value="other_period" />
+                  <span class="conc-outcome-icon">↪</span>
+                  <strong>Pagamento de outra competência</strong>
+                  <small>Não vincula à nota selecionada. Registra que os pagamentos pertencem a uma NFS-e de outro período.</small>
+                </label>
+                <label class="conc-builder-outcome-card" data-outcome-card="not_found">
+                  <input type="radio" name="builderOutcome" value="not_found" />
+                  <span class="conc-outcome-icon">⌕</span>
+                  <strong>Nota emitida — pagamento não localizado</strong>
+                  <small>Registra que a NFS-e foi conferida, mas nenhum pagamento foi encontrado nesta competência.</small>
+                </label>
+              </div>
+              <div id="builderOutcomeExplanation" class="conc-builder-outcome-explanation"></div>
+            </section>
+
+            <div class="conc-linkdesk-actions">
+              <input id="builderComment" placeholder="Comentário para a trilha de auditoria, quando necessário" />
+              <button class="button button-primary button-large" id="builderConfirmBtn" type="button">Registrar conclusão</button>
+            </div>
+          </section>
+        </section>
+
+        <section class="conc-page" data-conc-section="queue">
+          <div class="conc-page-head"><div><span class="panel-kicker">FILA DE CONCILIAÇÃO</span><h2>Investigue somente os casos que sobraram</h2><p>Um caso por vez, com progresso visível e o próximo caso preparado automaticamente.</p></div><div class="conc-head-actions"><button class="button button-ghost" id="queueFocusBtn" type="button">Ativar modo foco (recomendado)</button><div class="conc-counter-card"><strong id="queuePendingCount">0</strong><span>casos pendentes</span></div></div></div>
+          <section class="panel conc-queue-progress-strip"><div><span>Você resolveu nesta sessão</span><strong id="queueSessionSolved">0 caso(s)</strong></div><div class="conc-queue-mini-track"><i id="queueSessionBar"></i></div><div><span>Progresso do trabalho humano</span><strong id="queueHumanProgress">0%</strong></div><div><span>Próxima meta</span><strong id="queueMilestoneText">Começar</strong></div></section>
+          <div class="conc-queue-toolbar panel"><select id="queueFilter"><option value="all">Todos os pendentes</option><option value="doubts">Dúvidas e divergências</option><option value="notes">Notas sem pagamento</option><option value="payments">Pagamentos sem nota</option></select><label class="search-box"><span>⌕</span><input id="queueSearchInput" placeholder="Pesquisar na fila" /></label><button class="button button-ghost" id="queuePrevBtn" type="button">← Anterior</button><span id="queuePositionText">0 de 0</span><button class="button button-ghost" id="queueNextBtn" type="button">Próximo →</button><button class="button button-ghost" id="queueSkipBtn" type="button">Pular sem decidir</button></div>
+          <section id="queueCaseCard" class="panel conc-queue-card"></section>
+          <section class="panel conc-queue-decision">
+            <div class="conc-queue-recommendation"><div><span class="panel-kicker">SUGESTÃO DO CONFERINHO</span><strong id="queueRecommendationText">Analise o caso acima para ver a recomendação.</strong><small id="queueRecommendationReason"></small></div><button class="button button-ghost" id="queueRecommendedBtn" type="button">Usar esta sugestão</button></div>
+            <div class="conc-queue-decision-main"><span class="panel-kicker">REGISTRAR CONCLUSÃO</span><select id="queueDecision"><option value="" selected>Escolha a conclusão</option></select><div class="conc-quick-decisions" aria-label="Atalhos de decisão" id="queueQuickDecisions"></div></div>
+            <input id="queueComment" placeholder="Observação para o relatório (opcional)" />
+            <button class="button button-primary" id="queueSaveNextBtn" type="button" disabled>Salvar e continuar</button>
+            <div class="conc-keyboard-hint">Atalhos: <kbd>1</kbd> a <kbd>4</kbd> escolhem uma conclusão · <kbd>Enter</kbd> salva e continua</div>
+          </section>
+        </section>
+
+        <section class="conc-page" data-conc-section="consult">
+          <div class="conc-page-head"><div><span class="panel-kicker">CONSULTAR VÍNCULO</span><h2>Pesquise uma nota ou pagamento específico</h2><p>Descubra onde foi vinculado, quais valores formaram a nota e por que o Conferinho chegou àquela conclusão.</p></div></div>
+          <section class="panel conc-consult-search"><label class="search-box"><span>⌕</span><input id="consultSearchInput" placeholder="Número da NFS-e, ID do pagamento, cliente, CPF/CNPJ ou valor" /></label><button class="button button-primary" id="consultSearchBtn" type="button">Pesquisar</button></section>
+          <div class="conc-consult-grid"><section class="panel"><span class="panel-kicker">RESULTADOS</span><div id="consultResultsList" class="conc-consult-list"></div></section><section id="consultStoryPanel" class="panel conc-consult-story"><div class="empty-results"><div>🔎</div><strong>Pesquise para começar</strong><span>O vínculo completo aparecerá aqui.</span></div></section></div>
+        </section>
+
+        <section class="conc-page" data-conc-section="finish">
+          <div class="conc-page-head"><div><span class="panel-kicker">FINALIZAR E BAIXAR</span><h2>Feche a conciliação com segurança</h2><p>Revise o que ficou pendente, preserve a trilha de auditoria e gere o relatório final.</p></div></div>
+          <section class="conc-finish-guidance"><span>✅</span><div><strong>Você não precisa zerar tudo para gerar o relatório.</strong><p>O Conferinho separa o que foi resolvido do que continua pendente, mantendo a trilha de auditoria para a próxima conferência.</p></div></section>
+          <div class="conc-final-grid">
+            <section class="panel conc-final-summary"><span class="panel-kicker">RESUMO FINAL</span><div id="finishMetrics" class="conc-final-metrics"></div></section>
+            <section class="panel conc-checklist"><span class="panel-kicker">CHECKLIST</span><label><input type="checkbox" /> Conferi as possibilidades fortes</label><label><input type="checkbox" /> Classifiquei as notas com pagamento parcial ou não localizado</label><label><input type="checkbox" /> Classifiquei os pagamentos sem nota ou de outra competência</label><label><input type="checkbox" /> Registrei os comentários importantes</label></section>
+          </div>
+          <section class="panel conc-final-actions"><div><h3>Arquivos da conciliação</h3><p>O Excel final mantém as principais colunas da planilha original e separa notas pagas, pagas parcialmente, pagamentos não localizados e pagamentos sem nota. Também explica o que foi feito, como cada vínculo ocorreu e por quê.</p></div><div><button class="button button-ghost" id="finishSessionBtn" type="button">Salvar sessão em JSON</button><button class="button button-secondary button-large" id="receiptsExportBtn" type="button">Baixar relatório Excel completo</button></div></section>
+          <section class="panel"><div class="conc-section-title"><div><span class="panel-kicker">TRILHA DE AUDITORIA</span><h3>Decisões registradas</h3></div></div><div id="finishDecisionsList" class="conc-decision-list"></div></section>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <div id="guidedWelcomeModal" class="conc-welcome-modal" aria-hidden="true">
+    <div class="conc-welcome-modal-card">
+      <button id="guidedWelcomeClose" class="conc-modal-close" type="button" aria-label="Fechar">×</button>
+      <span class="conc-welcome-robot">🤖</span>
+      <span class="panel-kicker">BEM-VINDO AO CONCILIADOR</span>
+      <h2>Você não precisa conhecer o sistema para começar</h2>
+      <p>O Conferinho vai indicar uma tarefa por vez e guardar automaticamente tudo o que você decidir.</p>
+      <div class="conc-welcome-modal-steps">
+        <div><b>1</b><strong>Siga o próximo passo</strong><span>Comece pelo que é mais rápido e seguro.</span></div>
+        <div><b>2</b><strong>Leia a comparação</strong><span>Nota e pagamentos aparecem com todas as informações.</span></div>
+        <div><b>3</b><strong>Escolha o que aconteceu</strong><span>O relatório final registra a decisão e o motivo.</span></div>
+      </div>
+      <button id="guidedWelcomeStart" class="button button-primary button-large" type="button">Entendi, abrir a Caixa inteligente</button>
+    </div>
+  </div>
+
+  <div id="progressCelebration" class="conc-progress-celebration" aria-live="polite"><div><span id="celebrationIcon">✨</span><strong id="celebrationTitle">Bom avanço!</strong><p id="celebrationText">Mais um caso resolvido.</p></div></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="conciliador.js"></script>
+</body>
+</html>

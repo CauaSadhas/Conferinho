@@ -1,0 +1,17 @@
+VALIDAÇÕES REALIZADAS — V25
+
+- Sintaxe de app.js validada com Node.js.
+- Sintaxe de conciliador.js validada com Node.js.
+- HTML analisado sem IDs duplicados.
+- Todos os novos elementos da Caixa inteligente existem no HTML.
+- Navegação anterior e ferramentas avançadas foram preservadas.
+- Configuração da Vercel preservada.
+- Relatório mantém as abas anteriores e adiciona acompanhamento de competência.
+
+Cenários que devem ser conferidos após publicar:
+1. Importar o Excel e o PDF reais.
+2. Abrir a Caixa inteligente.
+3. Conferir os quatro grupos e os valores.
+4. Testar a confirmação segura com a prévia.
+5. Classificar um parcial e um pagamento de outra competência.
+6. Baixar o Excel e abrir a aba “Acompanhar próxima competência”.

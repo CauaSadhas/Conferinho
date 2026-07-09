@@ -1,0 +1,9 @@
+VALIDAÇÕES REALIZADAS NA V23
+
+- Sintaxe do JavaScript validada.
+- Geração de todas as abas verificada por inspeção do código.
+- Relatório principal preserva as colunas mais importantes do Excel original.
+- Classificação testada para pago e conciliado, pago parcialmente, pagamento não localizado e pagamento sem nota.
+- Saldo faltante e valor localizado são exportados como números.
+- Trilha de auditoria inclui decisões e vínculos manuais.
+- O sistema continua sem alterar a planilha original.

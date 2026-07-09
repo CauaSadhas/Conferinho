@@ -1,0 +1,64 @@
+CONFERINHO V24 — FLUXO GUIADO
+
+OBJETIVO
+Transformar o conciliador em uma ferramenta que uma pessoa nova consiga usar sem conhecer a lógica interna do projeto.
+
+PRINCIPAIS MUDANÇAS
+
+1. Assistente de conciliação
+- Nova tela principal após a análise.
+- Mostra somente o próximo passo recomendado.
+- Divide o trabalho em blocos claros:
+  1) sugestões seguras;
+  2) pagamentos parciais;
+  3) notas sem pagamento;
+  4) pagamentos sem nota;
+  5) casos realmente difíceis.
+- Informa o tempo aproximado para revisar as pendências.
+
+2. Navegação simplificada
+- O menu principal agora mostra apenas:
+  - Assistente de conciliação;
+  - Resumo da conciliação;
+  - Resolver um caso;
+  - Pesquisar;
+  - Relatório final.
+- Revisão em lote, listas completas e Mesa de vínculos continuam disponíveis em “Ferramentas para casos especiais”.
+
+3. Próxima ação automática
+- O Conferinho analisa o que ainda está pendente.
+- Recomenda a etapa que reduz mais trabalho com menos esforço.
+- Ao terminar um bloco, volta automaticamente ao Assistente e prepara a próxima etapa.
+
+4. Fila mais rápida
+- Nova sugestão do Conferinho para cada caso.
+- Botão “Usar esta sugestão” preenche a conclusão, sem salvar automaticamente.
+- Quando existe uma possibilidade forte, o botão abre diretamente a Mesa de vínculos.
+- Atalhos de teclado:
+  - 1 a 4: selecionar conclusão;
+  - Enter: salvar e continuar;
+  - Esc: voltar ao Assistente.
+
+5. Revisão rápida melhorada
+- Botão para selecionar somente vínculos com 95% ou mais de compatibilidade.
+- A seleção não é confirmada automaticamente: o usuário ainda revisa e confirma.
+
+6. Primeiro acesso orientado
+- Explicação simples em três passos.
+- Pode ser aberta novamente pelo botão “Como usar este módulo”.
+
+7. Salvamento visível
+- O menu mostra o horário do último salvamento automático.
+- As decisões continuam armazenadas no navegador para retomar depois.
+
+8. Experiência menos cansativa
+- Tempo estimado.
+- Roteiro visual.
+- Blocos concluídos ficam marcados.
+- Ferramentas avançadas ficam recolhidas por padrão.
+- O usuário não precisa descobrir qual tela abrir em seguida.
+
+SEGURANÇA
+- Nenhuma decisão sugerida é salva automaticamente.
+- O Excel original não é alterado.
+- “Revisar depois” continua mantendo o caso na fila.

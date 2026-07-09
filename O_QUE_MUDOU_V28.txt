@@ -1,0 +1,37 @@
+CONFERINHO V28 — CONFERÊNCIA PROTEGIDA
+
+Objetivo
+Evitar falsos apontamentos de “somente no Domínio” ou “não escriturada no Domínio” quando a nota existe no PDF, mas uma linha não foi interpretada corretamente.
+
+Principais melhorias
+1. Dupla leitura
+- Primeiro extrai e organiza as linhas dos relatórios.
+- Depois pesquisa novamente o número da NF diretamente no texto bruto do PDF.
+
+2. Regra conservadora
+- Uma nota só é declarada ausente quando não há indício dela no outro arquivo e a leitura está segura.
+- Caso exista indício ou falha de extração, o resultado passa a ser “Revisar leitura antes de concluir”.
+
+3. Busca por várias evidências
+- Número da NF.
+- CPF/CNPJ do fornecedor.
+- Valor da nota.
+- Nome/razão social.
+- Data e série quando disponíveis.
+
+4. Resgate de número lido diferente
+- Se fornecedor/documento e valor coincidirem, mas o número tiver sido extraído diferente, o sistema não declara ausência automaticamente.
+
+5. Validação do próprio relatório
+- Procura quantidade e total informados no rodapé/cabeçalho.
+- Compara com a quantidade e o total extraídos.
+- Se não fechar, a leitura fica sinalizada e as ausências deixam de ser conclusivas.
+
+6. Evidência visível
+- Nos casos de revisão, mostra arquivo, linha aproximada e trecho bruto encontrado no PDF.
+
+7. Relatório
+- Passa a informar quantos casos foram protegidos contra falsa ausência.
+
+Observação
+Nenhum leitor de PDF pode garantir 100% em todos os arquivos possíveis. A V28 foi projetada para priorizar segurança: quando houver dúvida de leitura, o Conferinho pede revisão em vez de afirmar incorretamente que a nota não existe.

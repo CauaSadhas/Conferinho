@@ -3,7 +3,7 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const pdfState = { filesA: [], filesB: [], records: [], filter: "all", search: "", labels: { A: "SEFAZ", B: "Domínio" }, metrics: null, reportMeta: { company: "", document: "", period: "", responsible: "", generalNote: "", reportDate: "", includeCorrect: true, runAt: null } };
+const pdfState = { filesA: [], filesB: [], records: [], filter: "all", search: "", labels: { A: "SEFAZ", B: "Domínio" }, metrics: null, sourceDocs: { A: [], B: [] }, extractionQuality: null, reportMeta: { company: "", document: "", period: "", responsible: "", generalNote: "", reportDate: "", includeCorrect: true, runAt: null } };
 const nfseState = { files: [], notes: [], warnings: [], processed: 0, failed: 0, filter: "retained", search: "" };
 const sumState = { files: [], records: [], warnings: [], pages: 0, filter: "all", search: "" };
 
@@ -13,7 +13,7 @@ const moduleCopy = {
   pdf: {
     title: 'A <span>SEFAZ é a base</span>. O Domínio precisa bater.',
     text: "Envie a base oficial da SEFAZ. Eu procuro cada NF no Domínio, somo os desdobramentos e mostro por que a escrituração não está batendo.",
-    benefits: ["SEFAZ como fonte oficial", "Domínio auditado por NF", "Causa provável e ação"],
+    benefits: ["SEFAZ como fonte oficial", "Dupla busca no PDF", "Ausência só com leitura segura"],
     mascot: "Eu parto da SEFAZ, audito o Domínio e mostro onde investigar cada diferença."
   },
   nfse: {
@@ -65,21 +65,38 @@ function safeStorageGet(key) { try { return localStorage.getItem(key) || ''; } c
 function safeStorageSet(key, value) { try { localStorage.setItem(key, value); } catch {} }
 
 $$('.module-button').forEach((button) => button.addEventListener('click', () => activateModule(button.dataset.module)));
+$$('[data-open-module]').forEach((button) => button.addEventListener('click', () => activateModule(button.dataset.openModule)));
+
 function activateModule(name) {
+  const isHome = name === 'home';
   $$('.module-button').forEach((button) => button.classList.toggle('active', button.dataset.module === name));
+  $('#homeScreen')?.classList.toggle('hidden', !isHome);
+  $('.hero')?.classList.toggle('hidden', isHome);
   $('#pdfModule').classList.toggle('hidden', name !== 'pdf');
   $('#nfseModule').classList.toggle('hidden', name !== 'nfse');
   $('#sumModule').classList.toggle('hidden', name !== 'sum');
-  const copy = moduleCopy[name];
-  $('#heroTitle').innerHTML = copy.title;
-  $('#heroText').textContent = copy.text;
-  $('#heroBenefits').innerHTML = copy.benefits.map((item) => `<span><b>✓</b> ${escapeHtml(item)}</span>`).join('');
-  $('#mascotMessage').textContent = copy.mascot;
-  location.hash = 'top';
+  $('#globalResetBtn').classList.toggle('hidden', isHome);
+
+  if (!isHome) {
+    const copy = moduleCopy[name];
+    if (!copy) return;
+    const pageTitles = { pdf: 'Conferinho — Conciliação de Entradas', nfse: 'Conferinho — Analisador NFS-e', sum: 'Conferinho — Somador de NFs' };
+    document.title = pageTitles[name] || 'Conferinho';
+    $('#heroTitle').innerHTML = copy.title;
+    $('#heroText').textContent = copy.text;
+    $('#heroBenefits').innerHTML = copy.benefits.map((item) => `<span><b>✓</b> ${escapeHtml(item)}</span>`).join('');
+    $('#mascotMessage').textContent = copy.mascot;
+    try { history.replaceState(null, '', `?module=${encodeURIComponent(name)}#top`); } catch {}
+  } else {
+    document.title = 'Conferinho — Central de Conferência';
+    try { history.replaceState(null, '', `${location.pathname}#top`); } catch {}
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 $('#globalResetBtn').addEventListener('click', () => {
   const active = $('.module-button.active')?.dataset.module;
+  if (active === 'home') return activateModule('home');
   if (active === 'nfse') resetNfse(); else if (active === 'sum') resetSum(); else resetPdf();
 });
 
@@ -131,6 +148,7 @@ async function comparePdfs() {
     };
     const docsA = await readGroup(pdfState.filesA, 'A');
     const docsB = await readGroup(pdfState.filesB, 'B');
+    pdfState.sourceDocs = { A: docsA, B: docsB };
     pdfState.reportMeta = { ...pdfState.reportMeta, ...extractPdfReportMeta(docsA, docsB), runAt: new Date() };
     updatePdfProgress(.86, 'Montando a base oficial da SEFAZ e localizando cada NF no Domínio');
     const rawRowsA = docsA.flatMap((doc) => recordsFromText(doc.text, doc.fileName, 'A'));
@@ -138,7 +156,11 @@ async function comparePdfs() {
     updatePdfProgress(.92, 'Somando desdobramentos do Domínio e investigando as diferenças');
     const rowsA = consolidatePdfRecords(rawRowsA, 'A');
     const rowsB = consolidatePdfRecords(rawRowsB, 'B');
-    pdfState.records = enrichPdfDecisions(matchRecords(rowsA, rowsB), rowsA, rowsB, rawRowsA, rawRowsB);
+    pdfState.extractionQuality = buildExtractionQuality(docsA, docsB, rawRowsA, rawRowsB);
+    let matchedRows = matchRecords(rowsA, rowsB);
+    matchedRows = rescueCrossNumberMatches(matchedRows);
+    matchedRows = convertUnsafeAbsencesToReview(matchedRows, pdfState.extractionQuality, docsA, docsB);
+    pdfState.records = enrichPdfDecisions(matchedRows, rowsA, rowsB, rawRowsA, rawRowsB);
     updatePdfProgress(1, 'Auditoria do Domínio concluída com diagnóstico das pendências');
     renderPdfResults(rowsA, rowsB, rawRowsA, rawRowsB);
   } catch (error) {
@@ -327,7 +349,7 @@ function parseEntriesLine(line, fileName, side) {
   const cfopIndex = supplierPart.search(/\s+\d[-.]\d{3}\s+/);
   if (cfopIndex >= 0) supplierPart = supplierPart.slice(0, cfopIndex);
   else supplierPart = supplierPart.slice(0, moneyMatches[0].index);
-  const documentMatches = [...line.matchAll(/\d{11,14}/g)];
+  const documentMatches = [...line.matchAll(/\b\d{11,14}\b/g)];
   return makePdfRecord({ side, fileName, identifier: noteMatch[1], description: supplierPart, date: dateMatch[0], value: moneyMatches[0].value, raw: line, document: documentMatches.at(-1)?.[0] || '', series, confidence: 96, extraction: 'entries' });
 }
 
@@ -610,6 +632,183 @@ function similarity(a, b) {
   return intersection / Math.max(left.size, right.size);
 }
 
+
+function moneyTextVariants(value) {
+  const number = Number(value || 0);
+  if (!Number.isFinite(number)) return [];
+  const fixed = number.toFixed(2);
+  const pt = fixed.replace('.', ',');
+  const withThousands = number.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return [...new Set([fixed, pt, withThousands, `R$ ${withThousands}`, `R$${withThousands}`])];
+}
+
+function invoiceNumberRegex(identifier) {
+  const number = String(identifier || '').replace(/^0+/, '') || '0';
+  return new RegExp(`(^|[^0-9])0*${number.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}([^0-9]|$)`, 'i');
+}
+
+function rawPdfEvidence(record, docs) {
+  if (!record || !record.identifier || !Array.isArray(docs) || !docs.length) return null;
+  const numberRegex = invoiceNumberRegex(record.identifier);
+  const document = String(record.document || '');
+  const supplierTokens = meaningfulSupplierText(record.description).split(' ').filter((token) => token.length >= 4).slice(0, 5);
+  let best = null;
+  docs.forEach((doc) => {
+    const source = String(doc.text || '');
+    const lines = source.split(/\r?\n/);
+    lines.forEach((line, index) => {
+      if (!numberRegex.test(line)) return;
+      const context = [lines[index - 1], line, lines[index + 1]].filter(Boolean).join(' ');
+      const compact = normalize(context);
+      let score = 50;
+      const valueFound = moneyTextVariants(record.value).some((variant) => compact.includes(normalize(variant)));
+      if (valueFound) score += 28;
+      const docFound = document && onlyDigits(context).includes(document);
+      if (docFound) score += 28;
+      const supplierHits = supplierTokens.filter((token) => compact.includes(token)).length;
+      score += Math.min(18, supplierHits * 5);
+      const evidence = {
+        fileName: doc.fileName,
+        line: index + 1,
+        excerpt: context.replace(/\s+/g, ' ').trim().slice(0, 420),
+        score: Math.min(100, score),
+        valueFound,
+        documentFound: !!docFound,
+        supplierHits
+      };
+      if (!best || evidence.score > best.score) best = evidence;
+    });
+  });
+  return best;
+}
+
+function extractDeclaredReportSummary(text) {
+  const source = String(text || '');
+  const normalized = normalize(source);
+  const countPatterns = [
+    /qtde\s+(?:de\s+)?notas?\s*[:=-]?\s*(\d{1,7})/i,
+    /quantidade\s+(?:de\s+)?notas?\s*[:=-]?\s*(\d{1,7})/i,
+    /total\s+(?:de\s+)?notas?\s*[:=-]?\s*(\d{1,7})/i
+  ];
+  let declaredCount = null;
+  for (const pattern of countPatterns) {
+    const match = source.match(pattern);
+    if (match) { declaredCount = Number(match[1]); break; }
+  }
+  const totalPatterns = [
+    /(?:qtde\s+(?:de\s+)?notas?[^\n\r]{0,80})total\s*[:=-]?\s*(R\$\s*)?([\d.]+,\d{2})/i,
+    /total\s+(?:geral|das?\s+notas?|nf(?:-?e)?s?)\s*[:=-]?\s*(R\$\s*)?([\d.]+,\d{2})/i,
+    /valor\s+total\s*[:=-]?\s*(R\$\s*)?([\d.]+,\d{2})/i
+  ];
+  let declaredTotal = null;
+  for (const pattern of totalPatterns) {
+    const match = source.match(pattern);
+    if (match) { declaredTotal = parseLocaleNumber(match[2]); break; }
+  }
+  return { declaredCount, declaredTotal, hasText: normalized.length >= 35 };
+}
+
+function buildExtractionQuality(docsA, docsB, rawRowsA, rawRowsB) {
+  const summarizeSide = (docs, rows, label) => {
+    const perFile = docs.map((doc) => {
+      const summary = extractDeclaredReportSummary(doc.text);
+      const fileRows = rows.filter((row) => row.fileName === doc.fileName);
+      const extractedTotal = fileRows.reduce((sum, row) => sum + Number(row.value || 0), 0);
+      const countGap = summary.declaredCount == null ? null : summary.declaredCount - fileRows.length;
+      const totalGap = summary.declaredTotal == null ? null : summary.declaredTotal - extractedTotal;
+      const countOk = countGap == null || countGap === 0;
+      const totalOk = totalGap == null || Math.abs(totalGap) <= 0.05;
+      const safe = summary.hasText && countOk && totalOk;
+      return { ...summary, fileName: doc.fileName, extractedCount: fileRows.length, extractedTotal, countGap, totalGap, safe };
+    });
+    const hasDeclaredControl = perFile.some((item) => item.declaredCount != null || item.declaredTotal != null);
+    const unsafeFiles = perFile.filter((item) => !item.safe && (item.declaredCount != null || item.declaredTotal != null));
+    const noTextFiles = perFile.filter((item) => !item.hasText);
+    return {
+      label,
+      perFile,
+      safe: !unsafeFiles.length && !noTextFiles.length,
+      hasDeclaredControl,
+      unsafeFiles,
+      noTextFiles,
+      extractedCount: rows.length,
+      extractedTotal: rows.reduce((sum, row) => sum + Number(row.value || 0), 0)
+    };
+  };
+  return { A: summarizeSide(docsA, rawRowsA, 'SEFAZ'), B: summarizeSide(docsB, rawRowsB, 'Domínio') };
+}
+
+function convertUnsafeAbsencesToReview(records, quality, docsA, docsB) {
+  return records.map((row) => {
+    if (row.status !== 'missing-a' && row.status !== 'missing-b') return row;
+    const missingSide = row.status === 'missing-a' ? 'A' : 'B';
+    const record = row.status === 'missing-a' ? row.b : row.a;
+    const docs = missingSide === 'A' ? docsA : docsB;
+    const rawEvidence = rawPdfEvidence(record, docs);
+    const sideQuality = quality?.[missingSide];
+    const unsafeExtraction = sideQuality && !sideQuality.safe;
+    if (!rawEvidence && !unsafeExtraction) return row;
+    const label = missingSide === 'A' ? 'SEFAZ' : 'Domínio';
+    const reason = rawEvidence
+      ? `A NF ${record.identifier} aparece no texto bruto do relatório ${label}, mas não foi transformada em uma linha confiável. O Conferinho não declarará ausência sem revisão.`
+      : `A leitura do relatório ${label} não fechou com os controles do próprio arquivo. Esta ausência não é conclusiva até revisar a extração.`;
+    return {
+      ...row,
+      status: 'review-extraction',
+      originalStatus: row.status,
+      rawEvidence,
+      extractionSide: missingSide,
+      difference: null,
+      reason
+    };
+  });
+}
+
+function rescueCrossNumberMatches(records) {
+  const missingA = records.filter((row) => row.status === 'missing-a');
+  const missingB = records.filter((row) => row.status === 'missing-b');
+  const usedA = new Set();
+  const usedB = new Set();
+  const rescued = [];
+  missingB.forEach((left, leftIndex) => {
+    const candidates = missingA.map((right, rightIndex) => ({ right, rightIndex })).filter(({ rightIndex }) => !usedA.has(rightIndex)).map(({ right, rightIndex }) => {
+      const a = left.a;
+      const b = right.b;
+      const sameValue = Math.abs(Number(a?.value || 0) - Number(b?.value || 0)) <= 0.01;
+      const sameDocument = a?.document && b?.document && a.document === b.document;
+      const supplierScore = similarity(a?.description, b?.description);
+      const sameDate = a?.date && b?.date && a.date === b.date;
+      let score = 0;
+      if (sameValue) score += 55;
+      if (sameDocument) score += 35;
+      if (supplierScore >= .55) score += 20;
+      else if (supplierScore >= .3) score += 10;
+      if (sameDate) score += 5;
+      return { right, rightIndex, score, sameValue, sameDocument, supplierScore };
+    }).filter((item) => item.score >= 85).sort((x, y) => y.score - x.score);
+    if (!candidates.length || (candidates[1] && candidates[0].score === candidates[1].score)) return;
+    const best = candidates[0];
+    usedB.add(leftIndex);
+    usedA.add(best.rightIndex);
+    rescued.push({
+      status: 'review-extraction',
+      originalStatus: 'number-mismatch',
+      a: left.a,
+      b: best.right.b,
+      duplicate: false,
+      grouped: !!(left.a?.consolidated || best.right.b?.consolidated),
+      difference: Math.abs(Number(left.a?.value || 0) - Number(best.right.b?.value || 0)),
+      reason: `Fornecedor/documento e valor indicam que as NFs ${left.a?.identifier} e ${best.right.b?.identifier} podem ser o mesmo documento, mas o número foi lido de forma diferente. Revisar antes de classificar como ausência.`
+    });
+  });
+  const untouched = records.filter((row) => {
+    if (row.status === 'missing-b') return !usedB.has(missingB.indexOf(row));
+    if (row.status === 'missing-a') return !usedA.has(missingA.indexOf(row));
+    return true;
+  });
+  return [...untouched, ...rescued];
+}
+
 function chooseBestSameNoteMatch(record, candidates, usedIndexes) {
   let best = null;
   candidates.forEach((candidate, index) => {
@@ -683,7 +882,8 @@ function pdfStatusLabel(status, grouped = false) {
     ok: 'Escriturada corretamente',
     divergent: 'Valor incorreto no Domínio',
     'missing-a': 'Lançamento extra no Domínio',
-    'missing-b': 'Não escriturada no Domínio'
+    'missing-b': 'Não escriturada no Domínio',
+    'review-extraction': 'Revisar leitura antes de concluir'
   })[status] || status;
 }
 
@@ -692,6 +892,7 @@ function pdfPriorityLabel(priority) {
 }
 
 function buildPdfCause(row) {
+  if (row.status === 'review-extraction') return 'O arquivo contém indícios da nota ou a extração não fechou com os controles do relatório. Não é seguro declarar ausência.';
   if (row.status === 'missing-b') return 'A NF oficial não foi localizada na escrituração.';
   if (row.status === 'missing-a') return 'Existe um lançamento no Domínio sem correspondência na base SEFAZ.';
   if (row.status === 'divergent') {
@@ -709,6 +910,11 @@ function buildPdfCause(row) {
 }
 
 function buildPdfChecklist(row) {
+  if (row.status === 'review-extraction') return [
+    'Abrir a evidência do texto bruto exibida pelo Conferinho.',
+    'Confirmar número, fornecedor, CPF/CNPJ, série e valor nas duas fontes.',
+    'Só classificar como ausente depois de validar que a linha realmente não existe.'
+  ];
   if (row.status === 'missing-b') return [
     'Confirmar se o XML ou a nota foi importado no Domínio.',
     'Verificar competência, filtros, empresa e modelo do documento.',
@@ -752,6 +958,7 @@ function buildPdfChecklist(row) {
 }
 
 function buildPdfAction(row) {
+  if (row.status === 'review-extraction') return 'Não altere o Domínio ainda. Valide a leitura e a evidência bruta. Se a nota estiver nas duas fontes, confirme como localizada; se não estiver, então registre a ausência.';
   const valueSefaz = row.a?.value || 0;
   const valueDominio = row.b?.value || 0;
   const difference = Math.abs(valueDominio - valueSefaz);
@@ -808,6 +1015,7 @@ function enrichPdfDecisions(records, rowsA, rowsB, rawRowsA = rowsA, rawRowsB = 
     if (row.status === 'missing-b') priority = impact >= criticalThreshold ? 'critical' : 'high';
     else if (row.status === 'divergent') priority = impact >= criticalThreshold ? 'critical' : 'high';
     else if (row.status === 'missing-a') priority = impact >= criticalThreshold ? 'high' : 'medium';
+    else if (row.status === 'review-extraction') priority = 'medium';
     else if (row.duplicate || exactComponentDuplicate) priority = 'high';
     else if (lowConfidence) priority = 'medium';
     const enrichedRow = {
@@ -837,6 +1045,7 @@ function enrichPdfDecisions(records, rowsA, rowsB, rawRowsA = rowsA, rawRowsB = 
   const missingInDomainRows = enriched.filter((row) => row.status === 'missing-b');
   const divergentRows = enriched.filter((row) => row.status === 'divergent');
   const extraDomainRows = enriched.filter((row) => row.status === 'missing-a');
+  const extractionReviewRows = enriched.filter((row) => row.status === 'review-extraction');
   const correctRate = rowsA.length ? (correctBaseRows.length / rowsA.length) * 100 : 0;
   const locatedRate = rowsA.length ? (locatedBaseRows.length / rowsA.length) * 100 : 0;
   const reconciledSefazValue = correctBaseRows.reduce((sum, row) => sum + (row.a?.value || 0), 0);
@@ -865,6 +1074,7 @@ function enrichPdfDecisions(records, rowsA, rowsB, rawRowsA = rowsA, rawRowsB = 
     missingInDomainCount: missingInDomainRows.length,
     divergentCount: divergentRows.length,
     extraDomainCount: extraDomainRows.length,
+    extractionReviewCount: extractionReviewRows.length,
     correctRate,
     locatedRate,
     reconciledSefazValue,
@@ -876,7 +1086,7 @@ function enrichPdfDecisions(records, rowsA, rowsB, rawRowsA = rowsA, rawRowsB = 
 
 function filteredPdfRows() {
   const priorityRank = { critical: 0, high: 1, medium: 2, ok: 3 };
-  const diagnosisRank = (row) => row.status === 'missing-b' ? 0 : row.status === 'divergent' ? 1 : row.status === 'missing-a' ? 2 : (row.duplicate || row.exactComponentDuplicate || row.lowConfidence) ? 3 : 4;
+  const diagnosisRank = (row) => row.status === 'missing-b' ? 0 : row.status === 'divergent' ? 1 : row.status === 'missing-a' ? 2 : row.status === 'review-extraction' ? 3 : (row.duplicate || row.exactComponentDuplicate || row.lowConfidence) ? 3 : 4;
   return pdfState.records.filter((row) => {
     let filterOk = false;
     if (pdfState.filter === 'all') filterOk = true;
@@ -903,7 +1113,10 @@ function renderPdfResults(rowsA, rowsB, rawRowsA = rowsA, rawRowsB = rowsB) {
   $('#pdfResultSubtitle').textContent = pendingCount
     ? `${pendingCount} ocorrência(s) precisam de análise. Comece por “Para resolver” e trate uma NF por vez.`
     : `As ${rowsA.length} NF(s) da base SEFAZ foram conferidas. ${groupedB} NF(s) do Domínio precisaram de soma automática.`;
-  $('#pdfValidationPanel').innerHTML = `<strong>Regra da conciliação:</strong> a SEFAZ é a base oficial. Cada NF deve existir no Domínio com o mesmo valor. Quando o Domínio divide uma NF em vários lançamentos, o Conferinho soma esses valores antes de comparar.`;
+  const quality = pdfState.extractionQuality;
+  const qualityWarnings = [quality?.A, quality?.B].filter((side) => side && !side.safe).map((side) => `${side.label}: leitura exige revisão`).join(' · ');
+  const reviewCount = pdfState.records.filter((row) => row.status === 'review-extraction').length;
+  $('#pdfValidationPanel').innerHTML = `<strong>Regra segura da conciliação:</strong> a SEFAZ é a base oficial. O Conferinho soma desdobramentos do Domínio, procura a NF por número, fornecedor/documento e valor e faz uma segunda busca no texto bruto do PDF. <b>Uma nota só é declarada ausente quando a leitura está segura.</b>${qualityWarnings ? `<br><span class="validation-warning">⚠ ${escapeHtml(qualityWarnings)}.</span>` : ''}${reviewCount ? `<br><span class="validation-review">${reviewCount} caso(s) foram enviados para revisão de leitura em vez de serem classificados incorretamente como ausentes.</span>` : ''}`;
   pdfState.filter = pendingCount ? 'pending' : 'all';
   pdfState.search = '';
   $('#pdfSearchInput').value = '';
@@ -927,6 +1140,7 @@ function refreshPdfDecisionDashboard() {
   const criticalRows = pendingRows.filter((row) => row.priority === 'critical');
   const openImpact = pendingRows.reduce((sum, row) => sum + row.impact, 0);
   const reviewRows = rows.filter((row) => row.needsReview).length;
+  const extractionReviewRows = rows.filter((row) => row.status === 'review-extraction').length;
   const extraDomain = rows.filter((row) => row.status === 'missing-a').length;
 
   $('#pdfTotalCount').textContent = metrics.baseNfs ?? 0;
@@ -978,18 +1192,18 @@ function refreshPdfDecisionDashboard() {
     $('#pdfDecisionIcon').textContent = '!';
     $('#pdfDecisionLevel').textContent = 'NÃO FECHAR AINDA';
     $('#pdfDecisionTitle').textContent = `${coverageText}.`;
-    $('#pdfDecisionText').textContent = `Faltam ${missingInDomain} NF(s) da SEFAZ no Domínio, ${divergent} possuem valor incorreto e ${extraDomain} lançamento(s) existem somente no Domínio. Há ${money.format(openImpact)} ainda sem explicação.${reviewRows ? ` ${reviewRows} leitura(s) de baixa confiança bateram por NF e valor e ficaram apenas como aviso técnico.` : ''}`;
-    $('#pdfDecisionNext').innerHTML = `<strong>Ordem de investigação</strong><span>1. NFs da SEFAZ não localizadas · 2. Valores incorretos no Domínio · 3. Duplicidades reais · 4. Lançamentos extras no Domínio${reviewRows ? ' · Aviso separado: confirmar leituras incertas quando necessário' : ''}</span>`;
+    $('#pdfDecisionText').textContent = `Faltam ${missingInDomain} NF(s) da SEFAZ no Domínio, ${divergent} possuem valor incorreto e ${extraDomain} lançamento(s) existem somente no Domínio. Há ${money.format(openImpact)} ainda sem explicação.${reviewRows ? ` ${reviewRows} leitura(s) de baixa confiança bateram por NF e valor e ficaram apenas como aviso técnico.` : ''}${extractionReviewRows ? ` ${extractionReviewRows} caso(s) foram protegidos contra falsa ausência e aguardam revisão da extração.` : ''}`;
+    $('#pdfDecisionNext').innerHTML = `<strong>Ordem de investigação</strong><span>1. NFs da SEFAZ não localizadas · 2. Valores incorretos no Domínio · 3. Duplicidades reais · 4. Lançamentos extras no Domínio${reviewRows ? ' · Aviso separado: confirmar leituras incertas quando necessário' : ''}${extractionReviewRows ? ' · Revisar casos em que o PDF contém indícios da nota antes de corrigir o Domínio' : ''}</span>`;
   } else {
     decisionCard.classList.add('decision-warning');
     $('#pdfDecisionIcon').textContent = '→';
     $('#pdfDecisionLevel').textContent = 'REVISAR ANTES DO FECHAMENTO';
     $('#pdfDecisionTitle').textContent = `${coverageText}.`;
-    $('#pdfDecisionText').textContent = `A escrituração ainda possui ${pendingRows.length} pendência(s) reais: ${missingInDomain} não localizada(s) no relatório do Domínio, ${divergent} com valor incorreto e ${extraDomain} extra(s) no Domínio.${reviewRows ? ` Além disso, ${reviewRows} leitura(s) correta(s) ficaram sinalizadas somente para conferência visual opcional.` : ''}`;
+    $('#pdfDecisionText').textContent = `A escrituração ainda possui ${pendingRows.length} pendência(s) reais: ${missingInDomain} não localizada(s) no relatório do Domínio, ${divergent} com valor incorreto e ${extraDomain} extra(s) no Domínio.${reviewRows ? ` Além disso, ${reviewRows} leitura(s) correta(s) ficaram sinalizadas somente para conferência visual opcional.` : ''}${extractionReviewRows ? ` ${extractionReviewRows} caso(s) não foram classificados como ausência porque a leitura do PDF precisa ser confirmada.` : ''}`;
     $('#pdfDecisionNext').innerHTML = '<strong>Próximo passo</strong><span>Abra cada ocorrência, valide a causa provável, corrija o Domínio ou documente a justificativa e marque como resolvida.</span>';
   }
 
-  const diagnosisRank = (row) => row.status === 'missing-b' ? 0 : row.status === 'divergent' ? 1 : row.status === 'missing-a' ? 2 : 3;
+  const diagnosisRank = (row) => row.status === 'missing-b' ? 0 : row.status === 'divergent' ? 1 : row.status === 'missing-a' ? 2 : row.status === 'review-extraction' ? 3 : 3;
   const priorityList = $('#pdfPriorityList');
   const ranked = [...pendingRows].sort((a,b) => diagnosisRank(a)-diagnosisRank(b) || ({critical:0,high:1,medium:2,ok:3}[a.priority]-({critical:0,high:1,medium:2,ok:3}[b.priority])) || b.impact-a.impact).slice(0,5);
   priorityList.innerHTML = ranked.length ? ranked.map((row) => {
@@ -1021,6 +1235,7 @@ function pdfCompositionSideHtml(record, label) {
 }
 
 function buildSimpleNextStep(row) {
+  if (row.status === 'review-extraction') return 'Não corrija nada ainda. Abra a evidência bruta, confirme número, fornecedor/documento e valor nas duas fontes e só depois conclua se a nota está ou não ausente.';
   if (row.status === 'missing-b') return `Procure a NF no Domínio. Se o documento for válido e não estiver escriturado, importe ou lance ${money.format(row.a?.value || 0)}.`;
   if (row.status === 'missing-a') return 'Confirme se o lançamento pertence à empresa e ao período. Corrija o número, mantenha com justificativa ou exclua se for indevido.';
   if (row.status === 'divergent') {
@@ -1046,8 +1261,8 @@ function renderPdfTable() {
     const supplierText = supplierA && supplierB && normalize(supplierA) !== normalize(supplierB)
       ? `${supplierA} / ${supplierB}`
       : supplierA || supplierB || 'Fornecedor não identificado';
-    const statusClass = row.status === 'ok' ? 'status-ok' : row.status === 'divergent' ? 'status-divergent' : 'status-missing';
-    const caseClass = row.status === 'ok' ? 'case-ok' : row.status === 'divergent' ? 'case-warning' : row.status === 'missing-b' ? 'case-danger' : 'case-extra';
+    const statusClass = row.status === 'ok' ? 'status-ok' : row.status === 'divergent' ? 'status-divergent' : row.status === 'review-extraction' ? 'status-review' : 'status-missing';
+    const caseClass = row.status === 'ok' ? 'case-ok' : row.status === 'divergent' ? 'case-warning' : row.status === 'missing-b' ? 'case-danger' : row.status === 'review-extraction' ? 'case-review' : 'case-extra';
     const valueA = row.a?.value == null ? 'Não consta' : money.format(row.a.value);
     const valueB = row.b?.value == null ? 'Não consta' : money.format(row.b.value);
     const countA = row.a?.componentCount || (row.a ? 1 : 0);
@@ -1057,12 +1272,14 @@ function renderPdfTable() {
       row.a?.date ? `SEFAZ: ${row.a.date}` : '',
       row.b?.date ? `Domínio: ${row.b.date}` : '',
       row.a?.fileName ? `Arquivo SEFAZ: ${row.a.fileName}` : '',
-      row.b?.fileName ? `Arquivo Domínio: ${row.b.fileName}` : ''
+      row.b?.fileName ? `Arquivo Domínio: ${row.b.fileName}` : '',
+      row.rawEvidence?.fileName ? `Evidência bruta: ${row.rawEvidence.fileName}, linha aproximada ${row.rawEvidence.line}` : ''
     ].filter(Boolean).join(' · ');
     const compositionCount = countA + countB;
+    const rawEvidenceHtml = row.rawEvidence ? `<div class="case-raw-evidence"><strong>Trecho encontrado no PDF bruto</strong><p>${escapeHtml(row.rawEvidence.excerpt || '')}</p><small>${escapeHtml(row.rawEvidence.fileName || '')} · linha aproximada ${row.rawEvidence.line || '—'} · força da evidência ${row.rawEvidence.score || 0}%</small></div>` : '';
     const technicalContent = row.grouped
-      ? `<div class="composition-grid">${pdfCompositionSideHtml(row.a, 'SEFAZ — base oficial')}${pdfCompositionSideHtml(row.b, 'Domínio — escrituração')}</div>`
-      : `<p class="case-file-details">${escapeHtml(detailText || 'Sem datas ou arquivos adicionais identificados.')}</p>`;
+      ? `<div class="composition-grid">${pdfCompositionSideHtml(row.a, 'SEFAZ — base oficial')}${pdfCompositionSideHtml(row.b, 'Domínio — escrituração')}</div>${rawEvidenceHtml}`
+      : `<p class="case-file-details">${escapeHtml(detailText || 'Sem datas ou arquivos adicionais identificados.')}</p>${rawEvidenceHtml}`;
     const differenceLabel = row.status === 'missing-b' ? 'Falta escriturar' : row.status === 'missing-a' ? 'Sem base SEFAZ' : row.status === 'divergent' ? 'Diferença' : 'Resultado';
     const differenceValue = row.status === 'ok' ? 'Confere' : row.impact ? money.format(row.impact) : 'Revisar';
     const extraBadges = `${row.grouped ? '<span class="status-badge status-grouped">Σ valores somados</span>' : ''}${row.lowConfidence ? `<span class="status-badge status-review">Confirmar leitura ${row.confidence}%</span>` : ''}${row.duplicate || row.exactComponentDuplicate ? '<span class="status-badge status-review">Revisar repetição</span>' : ''}`;
@@ -1159,7 +1376,7 @@ function buildPdfExecutiveSummary() {
   const pending = pdfState.records.filter((row) => row.needsAction && !row.resolved);
   const critical = pending.filter((row) => row.priority === 'critical');
   const openImpact = pending.reduce((sum, row) => sum + row.impact, 0);
-  const diagnosisRank = (row) => row.status === 'missing-b' ? 0 : row.status === 'divergent' ? 1 : row.status === 'missing-a' ? 2 : 3;
+  const diagnosisRank = (row) => row.status === 'missing-b' ? 0 : row.status === 'divergent' ? 1 : row.status === 'missing-a' ? 2 : row.status === 'review-extraction' ? 3 : 3;
   const top = [...pending].sort((a,b) => diagnosisRank(a)-diagnosisRank(b) || b.impact-a.impact).slice(0,5);
   const lines = [
     'CONFERINHO — CONCILIAÇÃO DE ENTRADAS',
@@ -1171,6 +1388,7 @@ function buildPdfExecutiveSummary() {
     `Não escrituradas no Domínio: ${metrics.missingInDomainCount || 0}`,
     `Com valor incorreto: ${metrics.divergentCount || 0}`,
     `Lançamentos extras no Domínio: ${metrics.extraDomainCount || 0}`,
+    `Casos protegidos contra falsa ausência: ${metrics.extractionReviewCount || 0}`, 
     `Diferença final Domínio − SEFAZ: ${formatSignedMoney(metrics.netDifference)}`,
     `Pendências abertas: ${pending.length}`,
     `Ocorrências críticas: ${critical.length}`,
@@ -1225,6 +1443,7 @@ function exportPdfCsv() {
     ['Não escrituradas no Domínio', m.missingInDomainCount || 0],
     ['Com valor incorreto', m.divergentCount || 0],
     ['Extras no Domínio', m.extraDomainCount || 0],
+    ['Revisar leitura antes de concluir', m.extractionReviewCount || 0],
     ['Diferença final Domínio - SEFAZ', m.netDifference.toFixed(2).replace('.',',')],
     ['Pendências abertas', pending.length],
     ['Valor ainda sem explicação', pending.reduce((sum,row)=>sum+row.impact,0).toFixed(2).replace('.',',')],
@@ -1429,7 +1648,7 @@ function generatePdfFinalReport() {
 }
 
 function resetPdf() {
-  pdfState.filesA=[];pdfState.filesB=[];pdfState.records=[];pdfState.filter='all';pdfState.search='';pdfState.metrics=null;pdfState.labels={A:'SEFAZ',B:'Domínio'};pdfState.reportMeta={company:'',document:'',period:'',responsible:safeStorageGet('conferinhoReportResponsible'),generalNote:'',reportDate:'',includeCorrect:true,runAt:null};
+  pdfState.filesA=[];pdfState.filesB=[];pdfState.records=[];pdfState.filter='all';pdfState.search='';pdfState.metrics=null;pdfState.sourceDocs={A:[],B:[]};pdfState.extractionQuality=null;pdfState.labels={A:'SEFAZ',B:'Domínio'};pdfState.reportMeta={company:'',document:'',period:'',responsible:safeStorageGet('conferinhoReportResponsible'),generalNote:'',reportDate:'',includeCorrect:true,runAt:null};
   $('#reportAInput').value='';$('#reportBInput').value='';$('#reportAFileList').innerHTML='';$('#reportBFileList').innerHTML='';$('#reportALabel').value='SEFAZ';$('#reportBLabel').value='Domínio';$('#pdfSearchInput').value='';$('#pdfResults').classList.add('hidden');$('#pdfProgress').classList.add('hidden');$('#compareBtn').disabled=true;$('#pdfStatusHint').textContent='Envie a base oficial da SEFAZ e o relatório de entradas do Domínio.';showToast('Conciliação de entradas limpa.');
 }
 
@@ -2352,3 +2571,13 @@ function resetSum() {
   showToast('Somador de NFs limpo.');
 }
 
+
+// Abre diretamente o módulo solicitado pelos links do menu global.
+// Sem parâmetro, a primeira tela é a página inicial do Conferinho.
+try {
+  const requestedModule = new URLSearchParams(window.location.search).get('module');
+  if (requestedModule && moduleCopy[requestedModule]) activateModule(requestedModule);
+  else activateModule('home');
+} catch {
+  activateModule('home');
+}

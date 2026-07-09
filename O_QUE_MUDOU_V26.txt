@@ -1,0 +1,14 @@
+CONFERINHO V26 — SELEÇÃO MANUAL INTELIGENTE
+
+Melhorias principais:
+- Na História do vínculo, agora é possível marcar e desmarcar cada pagamento encontrado.
+- O resumo da decisão recalcula em tempo real com base apenas nos pagamentos marcados.
+- Botões rápidos: Marcar todos, Limpar seleção e Manter só os mais compatíveis.
+- Novo resumo da seleção mostrando se a escolha fecha a nota ou se ficou parcial.
+- Botão “Usar seleção na Mesa de vínculos” envia a escolha atual para a Mesa de vínculos.
+- Permite aproveitar o pagamento correto mesmo quando outro pagamento exibido não pertence à nota.
+
+Objetivo:
+- Evitar retrabalho de voltar à planilha.
+- Permitir seguir com pagamento parcial de forma clara.
+- Tornar a decisão mais rápida e segura para qualquer usuário.

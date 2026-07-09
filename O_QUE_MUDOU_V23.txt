@@ -1,0 +1,19 @@
+CONFERINHO V23 — RELATÓRIO COMPLETO E EXPLICADO
+
+A exportação Excel agora foi reorganizada para evitar a necessidade de voltar à planilha original.
+
+NOVAS ABAS
+- Resumo executivo
+- Relatório principal (estrutura próxima à planilha de recebimentos)
+- Relatório das notas
+- Pagas e conciliadas
+- Pagas parcialmente, com saldo faltante
+- Pagamento não localizado
+- Pagamentos acima da nota, quando houver
+- Pagamentos sem nota
+- Trilha de auditoria
+- Possibilidades
+- Lançamentos ignorados
+- Como interpretar
+
+O relatório informa quem pagou, CPF/CNPJ, datas, IDs, valores, NFS-e vinculada, quanto ainda falta, como o vínculo foi feito, por que foi aceito e quais decisões o usuário registrou.

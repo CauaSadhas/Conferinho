@@ -1,0 +1,55 @@
+CONFERINHO V17 — PROGRESSO VISÍVEL E CONCILIAÇÃO MAIS FLUIDA
+
+Objetivo desta versão
+
+A V17 foi criada para reduzir a sensação de bagunça e cansaço durante a conciliação. O sistema agora mostra o avanço de forma contínua, indica a próxima melhor ação e separa o trabalho automático do trabalho humano.
+
+NOVO PAINEL DE PROGRESSO
+
+- Percentual geral da conciliação.
+- Quantidade resolvida automaticamente.
+- Quantidade resolvida pelo usuário.
+- Quantidade que ainda falta analisar.
+- Maior valor que continua em aberto.
+- Barra visual que avança a cada decisão.
+- Etapas visuais: Ganhos rápidos, Triagem em lote, Casos difíceis e Fechamento.
+- Botão "Continuar de onde parei", que leva à melhor próxima etapa.
+
+META DA SESSÃO
+
+- Meta configurável de 5, 10, 20 ou 50 casos.
+- Contador de casos resolvidos na sessão atual.
+- Barra de avanço da meta.
+- Celebração discreta quando a meta é alcançada.
+
+MARCOS DE PROGRESSO
+
+- Feedback ao chegar a 25%, 50%, 75% e 100% do trabalho humano.
+- Mensagem mostrando quantos casos foram resolvidos e quantos restam.
+- Tela de celebração curta, sem interromper o fluxo.
+
+PAINEL DE COMANDO MAIS CLARO
+
+- Bloco "O que você já resolveu" com as decisões mais recentes.
+- Texto automático explicando o avanço alcançado.
+- Próxima ação recomendada de acordo com a situação real.
+- Etapas concluídas ganham marcação visual no menu lateral.
+
+FILA DE CONCILIAÇÃO MAIS LEVE
+
+- Mostra progresso da sessão e do trabalho humano.
+- Exibe quantos casos ainda estão abertos.
+- Atalhos de decisão: Correto, Corrigir planilha, Não pago e Outro mês.
+- O botão de salvar só é liberado após escolher uma conclusão.
+- Botão para pular um caso sem registrar decisão.
+- "Revisar depois" mantém o caso na fila e não conta como resolvido.
+- Modo foco, que esconde menus e distrações durante a análise individual.
+- Ao salvar, o próximo caso é preparado automaticamente.
+
+SEGURANÇA E CONTINUIDADE
+
+- As decisões continuam sendo salvas no navegador.
+- Sessões da V16 podem ser restauradas.
+- A planilha original não é alterada.
+- A trilha de auditoria continua disponível no relatório final.
+- Os demais módulos do Conferinho foram preservados.

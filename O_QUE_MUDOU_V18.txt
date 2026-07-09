@@ -1,0 +1,36 @@
+CONFERINHO V18 — LEITURA CONFORTÁVEL
+
+OBJETIVO
+Reduzir o cansaço visual, aumentar a legibilidade e mostrar primeiro o que realmente ajuda na decisão.
+
+MELHORIAS PRINCIPAIS
+1. Letras maiores em todo o conciliador: menu, cartões, tabelas, fila, filtros, campos e relatórios na tela.
+2. Nova opção “Leitura confortável” na barra lateral:
+   - Confortável (padrão)
+   - Texto maior
+   A escolha fica salva no navegador.
+3. Novo “Modo tranquilo” ativado por padrão:
+   - compacta o cabeçalho depois que a análise termina;
+   - reduz informações repetidas;
+   - deixa detalhes secundários recolhidos;
+   - mantém o essencial visível.
+4. Guia contextual em cada tela, dizendo qual é o objetivo daquela etapa e o que fazer agora.
+5. O painel grande de progresso agora aparece apenas onde ajuda:
+   - Painel de comando
+   - Revisão rápida
+   - Central de triagem
+   Nas telas Fila, Montar vínculo, Consultar e Finalizar ele é ocultado para evitar repetição.
+6. As quatro etapas da conciliação foram colocadas em uma área expansível.
+7. Os caminhos extras do painel foram colocados em uma área expansível.
+8. Fila de conciliação com textos, evidências, pagadores e decisões maiores.
+9. Tabelas e filtros mais legíveis.
+10. Tela Finalizar com orientação clara: não é obrigatório zerar todas as pendências para gerar o relatório.
+11. Melhor responsividade para notebooks e telas menores.
+12. Modo foco passou a ser apresentado como recomendado na fila.
+
+O QUE FOI PRESERVADO
+- Todos os módulos antigos do Conferinho.
+- Motor de conciliação da V17.
+- Progresso, metas de sessão e comemorações.
+- Revisão rápida, triagem, montagem de vínculo, fila, consulta e relatório Excel.
+- Salvamento da sessão e trilha de auditoria.

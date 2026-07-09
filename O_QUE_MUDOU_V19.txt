@@ -1,0 +1,18 @@
+CONFERINHO V19 — DECISÃO SEM VOLTAR PARA A PLANILHA
+
+A V19 transforma as telas de vínculo em telas completas de decisão.
+
+MELHORIAS PRINCIPAIS
+- O histórico do vínculo agora mostra o nome de cada pagador, CPF/CNPJ, valor, data, nota informada e origem do lançamento.
+- Mostra nome do cliente e razão social separadamente quando forem diferentes.
+- Exibe conta corrente, categoria, número interno e rastreabilidade da linha do Excel quando disponíveis.
+- Inclui a empresa e o CNPJ identificados no arquivo importado.
+- Agrupa os pagamentos por pagador e destaca o pagador principal.
+- Apresenta uma recomendação objetiva: confirmar, validar cadastro, não confirmar por mistura de pagadores ou localizar diferença.
+- Mostra possíveis NFS-e com tomador, CPF/CNPJ, valor, saldo, compatibilidade e motivo.
+- A mesma visão completa foi aplicada ao Histórico do vínculo, Consulta, Fila e diagnóstico de pagamentos.
+- O usuário precisa voltar ao Excel apenas quando algum dado realmente não existir no arquivo.
+
+SEGURANÇA
+- A planilha original continua sem alterações.
+- As decisões permanecem registradas na sessão e no relatório.

@@ -1,0 +1,8 @@
+TESTES REALIZADOS — V21
+
+- JavaScript validado com node --check.
+- Conferido que o painel de resultado usa position: relative, não sticky/fixed.
+- Conferido estado compacto sem seleção.
+- Conferido botão “selecionados · conferir” e rolagem até o resumo.
+- Conferido que o botão de confirmação continua desabilitado sem seleção.
+- Estrutura do ZIP validada.

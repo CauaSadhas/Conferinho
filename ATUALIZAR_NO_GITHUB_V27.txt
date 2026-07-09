@@ -1,0 +1,12 @@
+ATUALIZAÇÃO DO CONFERINHO V27 NO GITHUB / VERCEL
+
+1. Faça um backup do repositório atual.
+2. Extraia o arquivo Conferinho_V27_Tela_Inicial.zip.
+3. Abra a pasta conferinho_v27.
+4. Envie TODOS os arquivos de dentro da pasta para a raiz do repositório.
+5. Confirme a substituição dos arquivos existentes.
+6. Faça o commit.
+7. Aguarde a Vercel mostrar Ready.
+8. Abra o site e pressione Ctrl + F5.
+
+A página index.html agora é a tela inicial do sistema.

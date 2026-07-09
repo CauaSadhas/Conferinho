@@ -1,0 +1,24 @@
+TESTES REALIZADOS — CONFERINHO V24
+
+VALIDAÇÕES ESTÁTICAS
+- Sintaxe completa de conciliador.js validada com node --check.
+- IDs do HTML verificados contra seletores JavaScript.
+- Nenhum ID duplicado encontrado.
+- Chaves CSS balanceadas.
+- Estrutura dos módulos antigos preservada.
+
+FLUXOS REVISADOS
+- Tela de upload permanece funcional.
+- Após a análise, a página padrão é o Assistente de conciliação.
+- O Assistente calcula os blocos pendentes e recomenda a próxima etapa.
+- Botões dos blocos direcionam para a ferramenta correta.
+- Ferramentas avançadas continuam acessíveis.
+- Salvamento automático continua ativo.
+- Restauração de sessões antigas continua compatível com a chave usada nas versões anteriores.
+- Sugestão da fila apenas preenche a conclusão; não salva sem confirmação.
+- Atalhos de teclado ignoram campos de texto, seleção e comentários.
+- Revisão rápida permite selecionar vínculos com compatibilidade igual ou superior a 95%.
+- Ao concluir uma etapa, o fluxo retorna ao Assistente.
+
+OBSERVAÇÃO
+O sistema depende das bibliotecas PDF.js e SheetJS carregadas no navegador, como nas versões anteriores.

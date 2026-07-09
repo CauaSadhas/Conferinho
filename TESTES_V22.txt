@@ -1,0 +1,14 @@
+VALIDAÇÕES REALIZADAS NA V22
+
+- conciliador.js validado com node --check.
+- conciliador.html validado sem IDs duplicados.
+- Quatro opções da Mesa de Vínculos presentes no HTML.
+- Vínculo completo exige soma exata.
+- Pagamento parcial exige valor selecionado menor que o saldo.
+- Pagamento de outra competência exige ao menos um pagamento selecionado.
+- Nota sem pagamento localizado exige seleção vazia.
+- Casos concluídos recebem decisão definitiva e deixam a fila humana.
+- Pagamentos classificados em outra competência deixam as possibilidades e a Mesa de Vínculos.
+- Notas classificadas como não localizadas deixam a lista da Mesa de Vínculos.
+- Exportação Excel inclui conclusão e comentário do usuário.
+- Compatibilidade mantida com decisões antigas sem_pagamento e outro_mes.
