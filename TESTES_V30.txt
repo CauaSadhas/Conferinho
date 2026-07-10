@@ -1,0 +1,9 @@
+TESTES V30
+
+[OK] Sintaxe JavaScript validada com node --check.
+[OK] Painel de outras espécies incluído no resultado.
+[OK] Valores comparáveis e valores separados possuem indicadores distintos.
+[OK] Documentos excluídos do escopo não entram como “extras no Domínio”.
+[OK] Resumo executivo registra a espécie comparável e as demais espécies.
+[OK] Relatório final inclui seção de separação do Domínio por espécie.
+[OK] Lista detalhada mostra espécie, documento, fornecedor, data e valor.

@@ -201,3 +201,30 @@ table.decision-table{min-width:1450px}.decision-table th:nth-child(1){width:90px
 .case-raw-evidence strong{display:block;color:#744600;margin-bottom:5px}
 .case-raw-evidence p{margin:0;color:#34495e;line-height:1.5}
 .case-raw-evidence small{display:block;margin-top:7px;color:#7c6a4d}
+
+/* V30 - separação clara por espécie no módulo de entradas */
+.other-species-panel{margin:18px 0 20px;border-left:5px solid #f59e0b}
+.other-species-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:16px}
+.other-species-head h3{margin:.25rem 0 .35rem;font-size:1.35rem;color:#0f2e4d}
+.other-species-head p{margin:0;color:#60738a;max-width:900px}
+.other-species-badge{background:#fff3df;border:1px solid #f5c16c;color:#8a4b00;border-radius:999px;padding:8px 12px;font-weight:800;white-space:nowrap}
+.scope-comparison-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0}
+.scope-comparison-card{border:1px solid #dbe7f3;border-radius:16px;padding:16px;background:#fff;display:flex;flex-direction:column;gap:4px}
+.scope-comparison-card span{font-size:.78rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#5c7087}
+.scope-comparison-card strong{font-size:1.55rem;color:#0f2e4d}
+.scope-comparison-card small{color:#64748b}
+.scope-comparison-card.sefaz{border-top:4px solid #1f5f99}
+.scope-comparison-card.dominio{border-top:4px solid #22c55e}
+.scope-comparison-card.separated{border-top:4px solid #f59e0b;background:#fffaf2}
+.scope-result-banner{border-radius:14px;padding:13px 15px;background:#eefbf2;border:1px solid #a7d9b4;color:#155a2f;font-weight:700;margin-bottom:12px}
+.scope-result-banner.warn{background:#fff9eb;border-color:#efc979;color:#754300}
+.other-species-details{border-top:1px solid #e4ebf3;padding-top:12px}
+.other-species-details summary{cursor:pointer;font-weight:800;color:#164e7c}
+.other-species-summary{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.other-species-summary span{background:#f8fafc;border:1px solid #dbe5ef;border-radius:999px;padding:7px 10px;font-size:.88rem}
+.scope-table{width:100%;border-collapse:collapse}
+.scope-table th,.scope-table td{padding:10px 12px;border-bottom:1px solid #e7edf4;text-align:left}
+.scope-table th{font-size:.78rem;text-transform:uppercase;color:#5e7187;background:#f8fafc}
+.scope-table .align-right,.scope-table td.align-right{text-align:right}
+.scope-table tbody tr:hover{background:#fffaf2}
+@media(max-width:900px){.scope-comparison-grid{grid-template-columns:1fr}.other-species-head{flex-direction:column}}

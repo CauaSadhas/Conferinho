@@ -14,3 +14,5 @@ Arquivos principais alterados:
 - conciliador.js
 
 Os módulos de Entradas, NFS-e e Somador foram preservados.
+
+V30: após atualizar, faça um teste com o relatório SEFAZ e o Acompanhamento de Entradas do Domínio. O resultado deverá apresentar três blocos: SEFAZ, Domínio comparável e outras espécies.

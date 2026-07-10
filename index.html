@@ -228,6 +228,28 @@
           </article>
         </div>
 
+        <section class="panel other-species-panel hidden" id="pdfOtherSpeciesPanel">
+          <div class="other-species-head">
+            <div>
+              <span class="panel-kicker">SEPARAÇÃO DO RELATÓRIO DO DOMÍNIO</span>
+              <h3>O que não é NF-e ficou separado</h3>
+              <p>Esses documentos estão no relatório do Domínio, mas pertencem a outra espécie. Eles não são erro e não entram na comparação com a base da SEFAZ.</p>
+            </div>
+            <span class="other-species-badge" id="pdfOtherSpeciesBadge">0 documentos</span>
+          </div>
+          <div class="scope-comparison-grid">
+            <article class="scope-comparison-card sefaz"><span>SEFAZ · NF-e oficiais</span><strong id="pdfScopeSefazValue">R$ 0,00</strong><small id="pdfScopeSefazCount">0 notas</small></article>
+            <article class="scope-comparison-card dominio"><span>Domínio · mesma espécie</span><strong id="pdfScopeDomainValue">R$ 0,00</strong><small id="pdfScopeDomainCount">0 notas comparáveis</small></article>
+            <article class="scope-comparison-card separated"><span>Domínio · outras espécies</span><strong id="pdfScopeOtherValue">R$ 0,00</strong><small id="pdfScopeOtherCount">0 documentos separados</small></article>
+          </div>
+          <div class="scope-result-banner" id="pdfScopeResultBanner"></div>
+          <details class="other-species-details">
+            <summary>Ver documentos de outras espécies</summary>
+            <div class="other-species-summary" id="pdfOtherSpeciesSummary"></div>
+            <div class="table-wrap"><table class="scope-table"><thead><tr><th>Espécie</th><th>Documento</th><th>Fornecedor</th><th>Data</th><th class="align-right">Valor</th><th>Tratamento</th></tr></thead><tbody id="pdfOtherSpeciesBody"></tbody></table></div>
+          </details>
+        </section>
+
         <section class="panel cases-panel">
           <div class="cases-panel-head">
             <div>

@@ -1187,6 +1187,46 @@ function filteredPdfRows() {
   });
 }
 
+function renderOtherSpeciesPanel() {
+  const panel = $('#pdfOtherSpeciesPanel');
+  if (!panel) return;
+  const scope = pdfState.scopeInfo || {};
+  const excluded = scope.excludedRows || [];
+  const metrics = pdfState.metrics || {};
+  const otherTotal = excluded.reduce((sum, row) => sum + Number(row.value || 0), 0);
+  const domainComparableTotal = Number(metrics.totalB || 0);
+  const sefazTotal = Number(metrics.totalA || 0);
+  const sameBase = Math.abs(domainComparableTotal - sefazTotal) <= 0.01 && Number(metrics.missingInDomainCount || 0) === 0 && Number(metrics.divergentCount || 0) === 0 && Number(metrics.extraDomainCount || 0) === 0;
+
+  panel.classList.toggle('hidden', !excluded.length);
+  if (!excluded.length) return;
+
+  $('#pdfOtherSpeciesBadge').textContent = `${excluded.length} documento(s) separado(s)`;
+  $('#pdfScopeSefazValue').textContent = money.format(sefazTotal);
+  $('#pdfScopeSefazCount').textContent = `${metrics.baseNfs || 0} NF-e oficial(is)`;
+  $('#pdfScopeDomainValue').textContent = money.format(domainComparableTotal);
+  $('#pdfScopeDomainCount').textContent = `${metrics.domainNfs || 0} NF-e da espécie ${escapeHtml(scope.comparableSpecies || 'comparável')}`;
+  $('#pdfScopeOtherValue').textContent = money.format(otherTotal);
+  $('#pdfScopeOtherCount').textContent = `${excluded.length} documento(s) fora da comparação NF-e`;
+
+  const banner = $('#pdfScopeResultBanner');
+  banner.classList.toggle('warn', !sameBase);
+  banner.innerHTML = sameBase
+    ? `<strong>Comparação NF-e concluída em 100%.</strong> SEFAZ e Domínio comparável fecham em ${money.format(sefazTotal)}. Os ${excluded.length} documento(s), no total de ${money.format(otherTotal)}, pertencem a outra espécie e ficaram separados — não são lançamentos extras.`
+    : `<strong>A separação por espécie foi aplicada.</strong> A comparação NF-e usa somente a espécie ${escapeHtml(scope.comparableSpecies || 'identificada')}. Os demais ${excluded.length} documento(s), totalizando ${money.format(otherTotal)}, ficaram em uma lista separada e não entram como extras no Domínio.`;
+
+  const groups = new Map();
+  excluded.forEach((row) => {
+    const key = row.species || 'Não identificada';
+    const current = groups.get(key) || { count: 0, total: 0 };
+    current.count += 1;
+    current.total += Number(row.value || 0);
+    groups.set(key, current);
+  });
+  $('#pdfOtherSpeciesSummary').innerHTML = [...groups.entries()].sort((a,b) => b[1].total-a[1].total).map(([species, data]) => `<span><b>Espécie ${escapeHtml(species)}</b> · ${data.count} documento(s) · ${money.format(data.total)}</span>`).join('');
+  $('#pdfOtherSpeciesBody').innerHTML = excluded.slice().sort((a,b) => String(a.species||'').localeCompare(String(b.species||'')) || Number(a.identifier||0)-Number(b.identifier||0)).map((row) => `<tr><td><b>${escapeHtml(row.species || 'Não identificada')}</b></td><td>${escapeHtml(row.identifier || '—')}</td><td>${escapeHtml(row.description || 'Fornecedor não identificado')}</td><td>${escapeHtml(row.date || '—')}</td><td class="align-right"><b>${money.format(row.value || 0)}</b></td><td>Fora do escopo da NF-e · sem correção</td></tr>`).join('');
+}
+
 function renderPdfResults(rowsA, rowsB, rawRowsA = rowsA, rawRowsB = rowsB) {
   const groupedB = rowsB.filter((row) => row.consolidated).length;
   const pendingCount = pdfState.records.filter((row) => row.needsAction && !row.resolved).length;
@@ -1197,7 +1237,7 @@ function renderPdfResults(rowsA, rowsB, rawRowsA = rowsA, rawRowsB = rowsB) {
   const qualityWarnings = [quality?.A, quality?.B].filter((side) => side && !side.safe).map((side) => `${side.label}: leitura exige revisão`).join(' · ');
   const reviewCount = pdfState.records.filter((row) => row.status === 'review-extraction').length;
   const scope = pdfState.scopeInfo;
-  const scopeNote = scope?.excludedRows?.length ? `<br><span class="validation-review">ℹ ${scope.excludedRows.length} documento(s) do Domínio, totalizando ${money.format(scope.excludedTotal || 0)}, foram separados como outra espécie e não foram tratados como NF-e extra. Espécie comparável identificada: ${escapeHtml(scope.comparableSpecies)}.</span>` : '';
+  const scopeNote = scope?.excludedRows?.length ? `<br><span class="validation-review">ℹ Comparação em três blocos: SEFAZ NF-e × Domínio da espécie ${escapeHtml(scope.comparableSpecies)}; o restante do Domínio ficou separado. ${scope.excludedRows.length} documento(s), totalizando ${money.format(scope.excludedTotal || 0)}, pertencem a outra espécie e não são erros nem extras.</span>` : '';
   $('#pdfValidationPanel').innerHTML = `<strong>Regra segura da conciliação:</strong> a SEFAZ é a base oficial. O Conferinho soma desdobramentos do Domínio, procura a NF por número, fornecedor/documento e valor e faz uma segunda busca no texto bruto do PDF. <b>Uma nota só é declarada ausente quando a leitura está segura.</b>${scopeNote}${qualityWarnings ? `<br><span class="validation-warning">⚠ ${escapeHtml(qualityWarnings)}.</span>` : ''}${reviewCount ? `<br><span class="validation-review">${reviewCount} caso(s) foram enviados para revisão de leitura em vez de serem classificados incorretamente como ausentes.</span>` : ''}`;
   pdfState.filter = pendingCount ? 'pending' : 'all';
   pdfState.search = '';
@@ -1205,6 +1245,7 @@ function renderPdfResults(rowsA, rowsB, rawRowsA = rowsA, rawRowsB = rowsB) {
   $$('[data-pdf-filter]').forEach((item) => item.classList.toggle('active', item.dataset.pdfFilter === pdfState.filter));
   refreshPdfDecisionDashboard();
   $('#pdfResults').classList.remove('hidden');
+  renderOtherSpeciesPanel();
   renderPdfTable();
   $('#pdfResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -1238,11 +1279,11 @@ function refreshPdfDecisionDashboard() {
   $('#pdfPendingBadge').textContent = `${pendingRows.length} pendência(s)`;
 
   $('#pdfTotalALabel').textContent = 'Base oficial da SEFAZ';
-  $('#pdfTotalBLabel').textContent = 'Total escriturado no Domínio';
+  $('#pdfTotalBLabel').textContent = 'Domínio comparável (NF-e)';
   $('#pdfTotalAValue').textContent = money.format(metrics.totalA);
   $('#pdfTotalBValue').textContent = money.format(metrics.totalB);
   $('#pdfTotalARecords').textContent = `${metrics.baseNfs || 0} NF(s) oficiais em ${metrics.rowsA || 0} linha(s)`;
-  $('#pdfTotalBRecords').textContent = `${metrics.rowsB || 0} lançamento(s) → ${metrics.domainNfs || 0} NF(s); ${extraDomain} extra(s)`;
+  $('#pdfTotalBRecords').textContent = `${metrics.rowsB || 0} lançamento(s) → ${metrics.domainNfs || 0} NF-e comparável(is); ${extraDomain} extra(s) dentro da mesma espécie`;
   $('#pdfNetDifference').textContent = `${(metrics.correctRate || 0).toFixed(1).replace('.', ',')}%`;
   $('#pdfNetDirection').textContent = `${metrics.correctBaseCount || 0} de ${metrics.baseNfs || 0} NFs da SEFAZ corretas no Domínio`;
   $('#pdfOpenImpact').textContent = money.format(openImpact);
@@ -1260,7 +1301,9 @@ function refreshPdfDecisionDashboard() {
     $('#pdfDecisionIcon').textContent = '✓';
     $('#pdfDecisionLevel').textContent = 'ESCRITURAÇÃO CONCILIADA';
     $('#pdfDecisionTitle').textContent = 'O Domínio reproduz integralmente a base da SEFAZ.';
-    $('#pdfDecisionText').textContent = `${metrics.baseNfs || 0} NF(s) oficiais foram localizadas com os valores corretos. ${groupedDomain} NF(s) precisaram de soma automática e nenhuma diferença foi encontrada.`;
+    const separatedCount = pdfState.scopeInfo?.excludedRows?.length || 0;
+    const separatedTotal = pdfState.scopeInfo?.excludedTotal || 0;
+    $('#pdfDecisionText').textContent = `${metrics.baseNfs || 0} NF-e oficiais foram localizadas no Domínio comparável com os valores corretos. ${groupedDomain} NF(s) precisaram de soma automática e nenhuma diferença foi encontrada.${separatedCount ? ` Além disso, ${separatedCount} documento(s) de outras espécies, no total de ${money.format(separatedTotal)}, foram separados e não são pendências.` : ''}`;
     $('#pdfDecisionNext').innerHTML = '<strong>Próximo passo</strong><span>Salve o relatório como evidência da conferência e prossiga com o fechamento fiscal.</span>';
   } else if (!pendingRows.length && actionRows.length) {
     decisionCard.classList.add('decision-warning');
@@ -1301,7 +1344,7 @@ function refreshPdfDecisionDashboard() {
     <i>+</i>
     <span><small>Valores incorretos no Domínio</small><b>${formatSignedMoney(metrics.divergentSigned)}</b></span>
     <i>+</i>
-    <span><small>Lançamentos extras no Domínio</small><b>+ ${money.format(metrics.missingOnlyB)}</b></span>
+    <span><small>Extras na mesma espécie NF-e</small><b>+ ${money.format(metrics.missingOnlyB)}</b></span>
     <i>=</i>
     <span class="equation-total"><small>Diferença final Domínio − SEFAZ</small><b>${formatSignedMoney(metrics.netDifference)}</b></span>`;
 }
@@ -1460,16 +1503,20 @@ function buildPdfExecutiveSummary() {
   const openImpact = pending.reduce((sum, row) => sum + row.impact, 0);
   const diagnosisRank = (row) => row.status === 'missing-b' ? 0 : row.status === 'divergent' ? 1 : row.status === 'missing-a' ? 2 : row.status === 'review-extraction' ? 3 : 3;
   const top = [...pending].sort((a,b) => diagnosisRank(a)-diagnosisRank(b) || b.impact-a.impact).slice(0,5);
+  const otherSpeciesCount = pdfState.scopeInfo?.excludedRows?.length || 0;
+  const otherSpeciesTotal = pdfState.scopeInfo?.excludedTotal || 0;
+  const comparableSpecies = pdfState.scopeInfo?.comparableSpecies || '';
   const lines = [
     'CONFERINHO — CONCILIAÇÃO DE ENTRADAS',
     'Base oficial: SEFAZ | Escrituração auditada: Domínio',
     '',
     `Base SEFAZ: ${money.format(metrics.totalA)} em ${metrics.baseNfs || 0} NF(s)`,
-    `Total Domínio: ${money.format(metrics.totalB)} em ${metrics.domainNfs || 0} NF(s) consolidadas`,
+    `Domínio comparável${comparableSpecies ? ` (espécie ${comparableSpecies})` : ''}: ${money.format(metrics.totalB)} em ${metrics.domainNfs || 0} NF-e consolidadas`,
+    `Outras espécies no Domínio: ${money.format(otherSpeciesTotal)} em ${otherSpeciesCount} documento(s) separados — fora da comparação NF-e`,
     `Conciliação correta da base: ${(metrics.correctRate || 0).toFixed(1).replace('.', ',')}% (${metrics.correctBaseCount || 0} de ${metrics.baseNfs || 0} NFs)`,
     `Não escrituradas no Domínio: ${metrics.missingInDomainCount || 0}`,
     `Com valor incorreto: ${metrics.divergentCount || 0}`,
-    `Lançamentos extras no Domínio: ${metrics.extraDomainCount || 0}`,
+    `Extras no Domínio dentro da mesma espécie NF-e: ${metrics.extraDomainCount || 0}`,
     `Casos protegidos contra falsa ausência: ${metrics.extractionReviewCount || 0}`, 
     `Diferença final Domínio − SEFAZ: ${formatSignedMoney(metrics.netDifference)}`,
     `Pendências abertas: ${pending.length}`,
@@ -1679,6 +1726,19 @@ function buildPdfFinalReportHtml(meta) {
   const filesA = pdfState.filesA.map((file) => file.name).join(', ') || 'Não informado';
   const filesB = pdfState.filesB.map((file) => file.name).join(', ') || 'Não informado';
   const generalNote = String(meta.generalNote || '').trim();
+  const otherSpeciesRows = pdfState.scopeInfo?.excludedRows || [];
+  const otherSpeciesTotal = pdfState.scopeInfo?.excludedTotal || 0;
+  const comparableSpecies = pdfState.scopeInfo?.comparableSpecies || '';
+  const otherSpeciesGroups = new Map();
+  otherSpeciesRows.forEach((row) => {
+    const key = row.species || 'Não identificada';
+    const current = otherSpeciesGroups.get(key) || { count: 0, total: 0 };
+    current.count += 1;
+    current.total += Number(row.value || 0);
+    otherSpeciesGroups.set(key, current);
+  });
+  const otherSpeciesTable = otherSpeciesRows.length ? `<table class="report-table"><thead><tr><th>Espécie</th><th>Documento</th><th>Fornecedor</th><th>Data</th><th>Valor</th><th>Tratamento</th></tr></thead><tbody>${otherSpeciesRows.map((row) => `<tr><td>${escapeHtml(row.species || 'Não identificada')}</td><td>${escapeHtml(row.identifier || '—')}</td><td>${escapeHtml(row.description || 'Fornecedor não identificado')}</td><td>${escapeHtml(row.date || '—')}</td><td>${money.format(row.value || 0)}</td><td>Separado · fora do escopo NF-e</td></tr>`).join('')}</tbody></table>` : '<p class="report-empty">Nenhum documento de outra espécie foi identificado.</p>';
+  const otherSpeciesSummary = [...otherSpeciesGroups.entries()].map(([species,data]) => `Espécie ${species}: ${data.count} documento(s), ${money.format(data.total)}`).join(' · ');
   const generatedAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date());
   const conclusion = pending.length
     ? `A conciliação permanece aberta com ${pending.length} pendência(s), somando ${money.format(pendingImpact)} de impacto a investigar.`
@@ -1692,7 +1752,8 @@ function buildPdfFinalReportHtml(meta) {
     <header class="brand-line"><div class="brand"><div class="brand-mark">✓</div><div><strong>Conferinho</strong><small>Compara. Confere. Dá certo.</small></div></div><div class="report-number">RELATÓRIO GERADO EM<b>${escapeHtml(generatedAt)}</b></div></header>
     <section class="title-block"><span>CONCILIAÇÃO FISCAL DE ENTRADAS</span><h1>Relatório da conferência SEFAZ x Domínio</h1><p>Documento de evidência da comparação realizada, dos resultados encontrados e dos tratamentos registrados pelo responsável.</p><div class="meta-grid"><div class="meta-item"><small>Empresa / cliente</small><strong>${escapeHtml(meta.company || 'Não informado')}</strong></div><div class="meta-item"><small>Competência</small><strong>${escapeHtml(meta.period || 'Não informada')}</strong></div><div class="meta-item"><small>Data do relatório</small><strong>${escapeHtml(formatReportDate(meta.reportDate))}</strong></div><div class="meta-item"><small>Responsável</small><strong>${escapeHtml(meta.responsible || 'Não informado')}</strong></div><div class="meta-item"><small>Base oficial</small><strong>SEFAZ</strong></div><div class="meta-item"><small>Escrituração auditada</small><strong>Domínio</strong></div></div></section>
     <section class="status-box status-${status.tone}"><span>${escapeHtml(status.label)}</span><h2>${escapeHtml(status.title)}</h2><p>${escapeHtml(status.text)}</p></section>
-    <section class="kpis"><div class="kpi"><small>Total SEFAZ</small><strong>${money.format(metrics.totalA)}</strong><span>${metrics.baseNfs || 0} NF(s) oficiais</span></div><div class="kpi"><small>Total Domínio</small><strong>${money.format(metrics.totalB)}</strong><span>${metrics.domainNfs || 0} NF(s) consolidadas</span></div><div class="kpi"><small>Diferença original</small><strong>${formatSignedMoney(metrics.netDifference)}</strong><span>Domínio − SEFAZ</span></div><div class="kpi"><small>Base correta</small><strong>${(metrics.correctRate || 0).toFixed(1).replace('.', ',')}%</strong><span>${metrics.correctBaseCount || 0} de ${metrics.baseNfs || 0} NFs</span></div></section>
+    <section class="kpis"><div class="kpi"><small>Total SEFAZ</small><strong>${money.format(metrics.totalA)}</strong><span>${metrics.baseNfs || 0} NF(s) oficiais</span></div><div class="kpi"><small>Domínio comparável${comparableSpecies ? ` · espécie ${escapeHtml(comparableSpecies)}` : ''}</small><strong>${money.format(metrics.totalB)}</strong><span>${metrics.domainNfs || 0} NF-e consolidadas</span></div><div class="kpi"><small>Diferença original</small><strong>${formatSignedMoney(metrics.netDifference)}</strong><span>Domínio − SEFAZ</span></div><div class="kpi"><small>Base correta</small><strong>${(metrics.correctRate || 0).toFixed(1).replace('.', ',')}%</strong><span>${metrics.correctBaseCount || 0} de ${metrics.baseNfs || 0} NFs</span></div></section>
+    ${otherSpeciesRows.length ? `<section class="section"><div class="section-head"><h2>Separação do relatório do Domínio</h2><p>Comparação NF-e e documentos de outras espécies</p></div><div class="summary-list"><div class="summary-item"><small>SEFAZ · NF-e oficiais</small><strong>${money.format(metrics.totalA)}</strong></div><div class="summary-item"><small>Domínio · espécie comparável ${escapeHtml(comparableSpecies)}</small><strong>${money.format(metrics.totalB)}</strong></div><div class="summary-item"><small>Outras espécies separadas</small><strong>${money.format(otherSpeciesTotal)}</strong></div></div><div class="general-note" style="margin-top:10px"><b>Resultado:</b> ${Math.abs(metrics.totalA-metrics.totalB)<=.01 && !metrics.missingInDomainCount && !metrics.divergentCount && !metrics.extraDomainCount ? 'A comparação NF-e fechou em 100%. ' : ''}${escapeHtml(otherSpeciesSummary)}. Esses documentos não são lançamentos extras e não exigem correção.</div>${otherSpeciesTable}</section>` : ''}
     <section class="section"><div class="section-head"><h2>Resumo do trabalho realizado</h2><p>Resultado dos relatórios analisados</p></div><div class="summary-list"><div class="summary-item"><small>Conferidas sem correção</small><strong>${correct.length}</strong></div><div class="summary-item"><small>Conferidas após soma</small><strong>${groupedCorrect.length}</strong></div><div class="summary-item"><small>Pendências identificadas</small><strong>${actionRows.length}</strong></div><div class="summary-item"><small>Pendências tratadas</small><strong>${resolved.length}</strong></div><div class="summary-item"><small>Pendências abertas</small><strong>${pending.length}</strong></div><div class="summary-item"><small>Valor tratado / aberto</small><strong>${money.format(resolvedImpact)} / ${money.format(pendingImpact)}</strong></div></div></section>
     ${generalNote ? `<section class="section"><div class="section-head"><h2>Observação geral do responsável</h2></div><div class="general-note">${escapeHtml(generalNote)}</div></section>` : ''}
     <section class="section"><div class="section-head"><h2>Pendências tratadas</h2><p>${resolved.length} ocorrência(s) com solução registrada</p></div><div class="report-cases">${resolved.length ? resolved.map((row) => buildReportCaseCard(row, 'resolved')).join('') : '<p class="report-empty">Nenhuma pendência foi marcada como resolvida nesta conferência.</p>'}</div></section>

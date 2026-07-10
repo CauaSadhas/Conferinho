@@ -1,0 +1,23 @@
+CONFERINHO V30 — RESULTADO EM TRÊS BLOCOS
+
+O módulo Conciliação de Entradas agora separa claramente:
+
+1. SEFAZ — NF-e oficiais
+2. Domínio — documentos da mesma espécie comparável
+3. Domínio — documentos de outras espécies
+
+Regras:
+- Somente a espécie equivalente à NF-e entra na comparação SEFAZ x Domínio.
+- Documentos de outras espécies não aparecem como “extras no Domínio”.
+- O painel mostra quantidade e valor das outras espécies em uma área separada.
+- É possível abrir a lista completa dos documentos separados.
+- Se SEFAZ e Domínio comparável fecharem, o resultado informa 100% conciliado.
+- O total geral do Domínio passa a ser explicado pela soma: NF-e comparáveis + outras espécies.
+- O relatório final também registra a separação por espécie e a lista dos documentos fora do escopo NF-e.
+
+Resultado esperado nos relatórios DIEGO Q. FRANCA:
+- SEFAZ NF-e: 13 documentos, R$ 12.277,21
+- Domínio espécie 36: 13 documentos, R$ 12.277,21
+- Comparação NF-e: 100%
+- Outras espécies no Domínio (espécie 41): 10 documentos, R$ 32.590,36
+- Total geral do Domínio: R$ 44.867,57
